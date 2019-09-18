@@ -46,6 +46,7 @@ COLORS=$(
 	sed 's/^[^\[]*//'
 )
 mv "$TEMPFILE" "${TEMPDIR}/no_color.stl"
+COLOR_COUNT=$(echo "$COLORS" | wc -l)
 
 # If "no_color.stl" contains anything, it's considered a fatal error:
 # any geometry that doesn't have a color assigned, would end up in all per-color AMF files
@@ -65,22 +66,23 @@ echo
 echo "Create a separate .amf file for each color"
 IFS=$'\n'
 JOBS=0
+JOB_ID=0
 for COLOR in $COLORS; do
+	let JOB_ID++
 	if [ $JOBS -ge $PARALLEL_JOB_LIMIT ]; then
 		# Wait for one job to finish, before continuing
-		echo "Busy, waiting..."
 		wait -n
 		let JOBS--
 	fi
 	# Run job in background, and prefix all terminal output with the job ID and color to show progress
 	(
-		echo Starting...
+		echo Starting
 		# To support Windows/cygwin, render to temp file in input directory and later move it to TEMPDIR.
 		TEMPFILE=$(mktemp --tmpdir=. --suffix=.amf)
 		openscad "$INPUT_CSG" -o "$TEMPFILE" -D "module color(c) {if (str(c) == \"${COLOR}\") children();}"
 		mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.amf"
-		echo Done!
-	) 2>&1 | sed "s/^/${COLOR} /" &
+		echo Done
+	) 2>&1 | sed "s/^/${JOB_ID}\/${COLOR_COUNT} ${COLOR} /" &
 	let JOBS++
 done
 # Wait for all remaining jobs to finish
@@ -114,6 +116,7 @@ echo "Generate a merged .amf file"
 			echo "Skipping ${COLOR}!" >&2
 		fi
 		let id++
+		echo -ne "\r${id}/${COLOR_COUNT} " >&2
 	done
 	echo '</amf>'
 } > "$OUTPUT"
