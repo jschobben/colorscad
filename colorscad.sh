@@ -100,9 +100,13 @@ echo "Generate a merged .amf file"
 	id=0
 	IFS=$'\n'
 	for COLOR in $COLORS; do
-		echo " <object id=\"${id}\">"
-		# Crudely skip the AMF header/footer; assume there is exactly one "<object>" tag and keep only its contents
-		cat "${TEMPDIR}/${COLOR}.amf" | tail -n +5 | head -n -1 | sed "s/<volume>/<volume materialid=\"${id}\">/"
+		if grep -q -m 1 object "${TEMPDIR}/${COLOR}.amf"; then
+			echo " <object id=\"${id}\">"
+			# Crudely skip the AMF header/footer; assume there is exactly one "<object>" tag and keep only its contents
+			cat "${TEMPDIR}/${COLOR}.amf" | tail -n +5 | head -n -1 | sed "s/<volume>/<volume materialid=\"${id}\">/"
+		else
+			echo "Skipping ${COLOR}!" >&2
+		fi
 		let id++
 	done
 	echo '</amf>'
