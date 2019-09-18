@@ -30,6 +30,9 @@ TEMPDIR=$(mktemp -d)
 trap "rm -Rf '$INPUT_CSG' '$TEMPDIR'" EXIT
 
 echo "Get list of used colors"
+# Here we run openscad once on the .csg file, with a redefined "color" module that just echoes its parameters. There are two outputs:
+# 1) The echoed color values, which are extracted, sorted and stored in COLORS.
+# 2) Any geometry not wrapped in a color(), which is stored in TEMPDIR as "no_color.stl".
 # Colors are sorted on decreasing number of occurrences. The sorting is to gamble that more color mentions,
 # means more geometry; we want to start the biggest jobs first to improve parallelism.
 COLOR_ID_TAG="colorid_$$_${RANDOM}"
@@ -44,8 +47,8 @@ COLORS=$(
 )
 mv "$TEMPFILE" "${TEMPDIR}/no_color.stl"
 
-# If "no_color.stl" contains geometry, it's a fatal error.
-# Any geometry that doesn't have a color assigned will end up in all per-color AMF files
+# If "no_color.stl" contains anything, it's considered a fatal error:
+# any geometry that doesn't have a color assigned, would end up in all per-color AMF files
 if [ -s "${TEMPDIR}/no_color.stl" ]; then
 	echo
 	echo "Fatal error: some geometry is not wrapped in a color() module."
@@ -69,6 +72,7 @@ for COLOR in $COLORS; do
 		wait -n
 		let JOBS--
 	fi
+	# Run job in background, and prefix all terminal output with the job ID and color to show progress
 	(
 		echo Starting...
 		# To support Windows/cygwin, render to temp file in input directory and later move it to TEMPDIR.
@@ -79,6 +83,7 @@ for COLOR in $COLORS; do
 	) 2>&1 | sed "s/^/${COLOR} /" &
 	let JOBS++
 done
+# Wait for all remaining jobs to finish
 wait
 
 echo
