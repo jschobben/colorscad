@@ -127,6 +127,8 @@ if which zip &> /dev/null; then
 	# The AMF spec says that the zip file should have exactly the same name as the .amf inside
 	zip -m9 "${TEMPDIR}/output.zip" "$OUTPUT"
 	mv "${TEMPDIR}/output.zip" "$OUTPUT"
+else
+	echo "Skipping zip step, install the 'zip' program to produce a compressed AMF file."
 fi
 
 echo "Done"
