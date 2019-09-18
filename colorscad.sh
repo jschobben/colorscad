@@ -1,10 +1,11 @@
 #!/bin/bash
 INPUT=$1
-PARALLEL_JOB_LIMIT=8
+PARALLEL_JOB_LIMIT=${2:-8}
 
 if [ -z "$INPUT" ]; then
-	echo "Usage: $0 <scad file>"
+	echo "Usage: $0 <scad file> [MAX_PARALLEL_JOBS]"
 	echo "An .amf file with the same name will be created in the current directory."
+	echo "MAX_PARALLEL_JOBS defaults to 8, reduce if you're low on RAM."
 	exit 1
 fi
 
