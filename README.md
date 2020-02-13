@@ -5,7 +5,7 @@ using OpenSCAD's color() statement, so generally speaking the output will look l
 
 Usage
 -----
-./colorscad.sh <scad file> [MAX_PARALLEL_JOBS]
+./colorscad.sh \<scad file\> [MAX_PARALLEL_JOBS]
 
 An .amf file with the same name will be created in the current directory.
 MAX_PARALLEL_JOBS defaults to 8, reduce if you're low on RAM.
