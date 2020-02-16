@@ -1,17 +1,22 @@
 #!/bin/bash
 INPUT=$1
-PARALLEL_JOB_LIMIT=${2:-8}
+OUTPUT=$2
+PARALLEL_JOB_LIMIT=${3:-8}
 
-if [ -z "$INPUT" ]; then
-	echo "Usage: $0 <scad file> [MAX_PARALLEL_JOBS]"
-	echo "An .amf file with the same name will be created in the current directory."
+if [ -z "$OUTPUT" ]; then
+	echo "Usage: $0 <input scad file> <output file> [MAX_PARALLEL_JOBS]"
+	echo "The output file must not yet exist, and must have as extension '.amf'."
 	echo "MAX_PARALLEL_JOBS defaults to 8, reduce if you're low on RAM."
 	exit 1
 fi
 
-OUTPUT=${INPUT%.scad}.amf
 if [ -e "$OUTPUT" ]; then
 	echo "Output '$OUTPUT' already exists, aborting."
+	exit 1
+fi
+FORMAT=${OUTPUT##*.}
+if [ "$FORMAT" != amf ]; then
+	echo "Error: the output file's extension must be 'amf', but it is '$FORMAT'."
 	exit 1
 fi
 
@@ -63,7 +68,7 @@ if [ -s "${TEMPDIR}/no_color.stl" ]; then
 fi
 
 echo
-echo "Create a separate .amf file for each color"
+echo "Create a separate .${FORMAT} file for each color"
 IFS=$'\n'
 JOBS=0
 JOB_ID=0
@@ -78,9 +83,9 @@ for COLOR in $COLORS; do
 	(
 		echo Starting
 		# To support Windows/cygwin, render to temp file in input directory and later move it to TEMPDIR.
-		TEMPFILE=$(mktemp --tmpdir=. --suffix=.amf)
+		TEMPFILE=$(mktemp --tmpdir=. --suffix=.${FORMAT})
 		openscad "$INPUT_CSG" -o "$TEMPFILE" -D "module color(c) {if (str(c) == \"${COLOR}\") children();}"
-		mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.amf"
+		mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.${FORMAT}"
 		echo Done
 	) 2>&1 | sed "s/^/${JOB_ID}\/${COLOR_COUNT} ${COLOR} /" &
 	let JOBS++
@@ -89,42 +94,46 @@ done
 wait
 
 echo
-echo "Generate a merged .amf file"
-{
-	echo '<?xml version="1.0" encoding="UTF-8"?>'
-	echo '<amf unit="millimeter">'
-	echo ' <metadata type="producer">ColorSCAD</metadata>'
-	id=0
-	IFS=$'\n'
-	for COLOR in $COLORS; do
-		IFS=','; set -- $COLOR
-		R=${1#[}
-		G=$2
-		B=$3
-		A=${4%]}
-		echo " <material id=\"${id}\"><color><r>${R// }</r><g>${G// }</g><b>${B// }</b><a>${A// }</a></color></material>"
-		let id++
-	done
-	id=0
-	IFS=$'\n'
-	for COLOR in $COLORS; do
-		if grep -q -m 1 object "${TEMPDIR}/${COLOR}.amf"; then
-			echo " <object id=\"${id}\">"
-			# Crudely skip the AMF header/footer; assume there is exactly one "<object>" tag and keep only its contents
-			cat "${TEMPDIR}/${COLOR}.amf" | tail -n +5 | head -n -1 | sed "s/<volume>/<volume materialid=\"${id}\">/"
-		else
-			echo "Skipping ${COLOR}!" >&2
-		fi
-		let id++
-		echo -ne "\r${id}/${COLOR_COUNT} " >&2
-	done
-	echo '</amf>'
-} > "$OUTPUT"
+echo "Generate a merged .${FORMAT} file"
+if [ "$FORMAT" = amf ]; then
+	{
+		echo '<?xml version="1.0" encoding="UTF-8"?>'
+		echo '<amf unit="millimeter">'
+		echo ' <metadata type="producer">ColorSCAD</metadata>'
+		id=0
+		IFS=$'\n'
+		for COLOR in $COLORS; do
+			IFS=','; set -- $COLOR
+			R=${1#[}
+			G=$2
+			B=$3
+			A=${4%]}
+			echo " <material id=\"${id}\"><color><r>${R// }</r><g>${G// }</g><b>${B// }</b><a>${A// }</a></color></material>"
+			let id++
+		done
+		id=0
+		IFS=$'\n'
+		for COLOR in $COLORS; do
+			if grep -q -m 1 object "${TEMPDIR}/${COLOR}.amf"; then
+				echo " <object id=\"${id}\">"
+				# Crudely skip the AMF header/footer; assume there is exactly one "<object>" tag and keep only its contents
+				cat "${TEMPDIR}/${COLOR}.amf" | tail -n +5 | head -n -1 | sed "s/<volume>/<volume materialid=\"${id}\">/"
+			else
+				echo "Skipping ${COLOR}!" >&2
+			fi
+			let id++
+			echo -ne "\r${id}/${COLOR_COUNT} " >&2
+		done
+		echo '</amf>'
+	} > "$OUTPUT"
 
-echo
-echo "AMF file created successfully."
-echo "To create a compressed AMF, run:"
-echo "  zip '${OUTPUT}.zip' '$OUTPUT' && mv '${OUTPUT}.zip' '${OUTPUT}'"
-echo "But, be aware that some tools may not support compressed AMF files."
+	echo
+	echo "AMF file created successfully."
+	echo "To create a compressed AMF, run:"
+	echo "  zip '${OUTPUT}.zip' '$OUTPUT' && mv '${OUTPUT}.zip' '${OUTPUT}'"
+	echo "But, be aware that some tools may not support compressed AMF files."
+else
+	echo "Merging of format '${FORMAT}' not yet implemented!"
+fi
 
 echo "Done"

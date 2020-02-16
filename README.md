@@ -7,9 +7,9 @@ It should work with OpenSCAD version 2015.03, but was mostly tested on 2019.05.
 
 Usage
 -----
-./colorscad.sh \<scad file\> [MAX_PARALLEL_JOBS]
+./colorscad.sh <\input scad file\> \<output file\> [MAX_PARALLEL_JOBS]
 
-An .amf file with the same name will be created in the current directory.
+The output file must not yet exist, and must have as extension '.amf'.
 MAX_PARALLEL_JOBS defaults to 8, reduce if you're low on RAM.
 
 How it works
