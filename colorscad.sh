@@ -121,14 +121,10 @@ echo "Generate a merged .amf file"
 	echo '</amf>'
 } > "$OUTPUT"
 
-if which zip &> /dev/null; then
-	echo
-	echo "Zipping..."
-	# The AMF spec says that the zip file should have exactly the same name as the .amf inside
-	zip -m9 "${TEMPDIR}/output.zip" "$OUTPUT"
-	mv "${TEMPDIR}/output.zip" "$OUTPUT"
-else
-	echo "Skipping zip step, install the 'zip' program to produce a compressed AMF file."
-fi
+echo
+echo "AMF file created successfully."
+echo "To create a compressed AMF, run:"
+echo "  zip '${OUTPUT}.zip' '$OUTPUT' && mv '${OUTPUT}.zip' '${OUTPUT}'"
+echo "But, be aware that some tools may not support compressed AMF files."
 
 echo "Done"

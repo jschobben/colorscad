@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Fixed
 - Mention OpenSCAD version requirements in README.md
+- Do not automatically compress AMF files, since some tools (i.e. Slic3r 1.3.0) don't support compressed ones.
+  Instead, just echo a one-liner that can be copy-pasted in the terminal to compress the AMF.
 
 ## [0.0.1] - 2020-02-16
 ### Added

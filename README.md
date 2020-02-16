@@ -25,7 +25,6 @@ Or, in a bit more detail:
 4) Loop over the captured set of r/g/b/a values. For each of them, call OpenSCAD with another redefined color() module
    that only outputs when its r/g/b/a parameters match. Use multiple OpenSCAD processes here to speed things up a bit.
 5) Combine all the individual .amf files, assigning material color.
-6) If the 'zip' program is found, compress the .amf.
 
 Preparations
 ------------
