@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- CLI interface: now need to explicitly specify output file name
 ### Fixed
 - Mention OpenSCAD version requirements in README.md
 - Do not automatically compress AMF files, since some tools (i.e. Slic3r 1.3.0) don't support compressed ones.
