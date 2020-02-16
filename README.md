@@ -3,6 +3,8 @@ ColorSCAD
 This script helps with exporting an OpenSCAD model to AMF format, with color information preserved. The colors are simply assigned
 using OpenSCAD's color() statement, so generally speaking the output will look like the preview (F5) view in OpenSCAD.
 
+It should work with OpenSCAD version 2015.03, but was mostly tested on 2019.05.
+
 Usage
 -----
 ./colorscad.sh \<scad file\> [MAX_PARALLEL_JOBS]
