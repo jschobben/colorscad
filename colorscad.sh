@@ -96,7 +96,12 @@ for COLOR in $COLORS; do
 		# To support Windows/cygwin, render to temp file in input directory and later move it to TEMPDIR.
 		TEMPFILE=$(mktemp --tmpdir=. --suffix=.${INTERMEDIATE})
 		openscad "$INPUT_CSG" -o "$TEMPFILE" -D "module color(c) {if (str(c) == \"${COLOR}\") children();}"
-		mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.${INTERMEDIATE}"
+		if [ -s "$TEMPFILE" ]; then
+			mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.${INTERMEDIATE}"
+		else
+			echo "Warning: output is empty!"
+			rm "$TEMPFILE"
+		fi
 		echo Done
 	) 2>&1 | sed "s/^/${JOB_ID}\/${COLOR_COUNT} ${COLOR} /" &
 	let JOBS++
