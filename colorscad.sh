@@ -19,6 +19,7 @@ if [ "$FORMAT" != amf ]; then
 	echo "Error: the output file's extension must be 'amf', but it is '$FORMAT'."
 	exit 1
 fi
+INTERMEDIATE=$FORMAT # Format of the per-color intermediate results.
 
 if ! which openscad &> /dev/null; then
 	echo "Error: openscad command not found! Make sure it's in your PATH."
@@ -68,7 +69,7 @@ if [ -s "${TEMPDIR}/no_color.stl" ]; then
 fi
 
 echo
-echo "Create a separate .${FORMAT} file for each color"
+echo "Create a separate .${INTERMEDIATE} file for each color"
 IFS=$'\n'
 JOBS=0
 JOB_ID=0
@@ -83,9 +84,9 @@ for COLOR in $COLORS; do
 	(
 		echo Starting
 		# To support Windows/cygwin, render to temp file in input directory and later move it to TEMPDIR.
-		TEMPFILE=$(mktemp --tmpdir=. --suffix=.${FORMAT})
+		TEMPFILE=$(mktemp --tmpdir=. --suffix=.${INTERMEDIATE})
 		openscad "$INPUT_CSG" -o "$TEMPFILE" -D "module color(c) {if (str(c) == \"${COLOR}\") children();}"
-		mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.${FORMAT}"
+		mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.${INTERMEDIATE}"
 		echo Done
 	) 2>&1 | sed "s/^/${JOB_ID}\/${COLOR_COUNT} ${COLOR} /" &
 	let JOBS++
