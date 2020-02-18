@@ -5,7 +5,7 @@ PARALLEL_JOB_LIMIT=${3:-8}
 
 if [ -z "$OUTPUT" ]; then
 	echo "Usage: $0 <input scad file> <output file> [MAX_PARALLEL_JOBS]"
-	echo "The output file must not yet exist, and must have as extension '.amf'."
+	echo "The output file must not yet exist, and must have as extension either '.amf' or '.3mf'."
 	echo "MAX_PARALLEL_JOBS defaults to 8, reduce if you're low on RAM."
 	exit 1
 fi
@@ -15,11 +15,21 @@ if [ -e "$OUTPUT" ]; then
 	exit 1
 fi
 FORMAT=${OUTPUT##*.}
-if [ "$FORMAT" != amf ]; then
-	echo "Error: the output file's extension must be 'amf', but it is '$FORMAT'."
+if [ "$FORMAT" != amf ] && [ "$FORMAT" != 3mf ]; then
+	echo "Error: the output file's extension must be one of 'amf' or '3mf', but it is '$FORMAT'."
 	exit 1
 fi
 INTERMEDIATE=$FORMAT # Format of the per-color intermediate results.
+# Lib3MF does not seem to like OpenSCAD's .stl format, otherwise colored 3mf export would be possible with 2015.03 too.
+
+if [ "$FORMAT" = 3mf ]; then
+	DIR_3MFMERGE=$(readlink -f ${0%/*})/3mfmerge
+	if ! [ -x ${DIR_3MFMERGE}/build/3mfmerge ] && ! [ -x ${DIR_3MFMERGE}/build/3mfmerge.exe ]; then
+		echo "3MF output depends on a binary tool, that needs to be compiled first."
+		echo "Please see '3mfmerge/README.md' in the colorscad git repo (i.e. '${DIR_3MFMERGE}/')."
+		exit 1
+	fi
+fi
 
 if ! which openscad &> /dev/null; then
 	echo "Error: openscad command not found! Make sure it's in your PATH."
@@ -133,6 +143,14 @@ if [ "$FORMAT" = amf ]; then
 	echo "To create a compressed AMF, run:"
 	echo "  zip '${OUTPUT}.zip' '$OUTPUT' && mv '${OUTPUT}.zip' '${OUTPUT}'"
 	echo "But, be aware that some tools may not support compressed AMF files."
+elif [ "$FORMAT" = 3mf ]; then
+	# Run from inside TEMPDIR, to support having a Windows-format 3mfmerge binary
+	(
+		cd "$TEMPDIR"
+		echo "$COLORS" | sed "s/\$/\.${INTERMEDIATE}/" \
+			| "${DIR_3MFMERGE}"/build/3mfmerge merged.3mf
+	)
+	mv "${TEMPDIR}"/merged.3mf "$OUTPUT"
 else
 	echo "Merging of format '${FORMAT}' not yet implemented!"
 fi

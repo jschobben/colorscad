@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Add 3MF support, via lib3mf and the (included) c++ tool '3mfmerge'
 - CLI interface: now need to explicitly specify output file name
 ### Fixed
 - Mention OpenSCAD version requirements in README.md

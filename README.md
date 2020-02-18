@@ -1,22 +1,25 @@
 ColorSCAD
 =========
-This script helps with exporting an OpenSCAD model to AMF format, with color information preserved. The colors are simply assigned
-using OpenSCAD's color() statement, so generally speaking the output will look like the preview (F5) view in OpenSCAD.
+This script helps with exporting an OpenSCAD model to AMF or 3MF format, with color information preserved.
+The colors are simply assigned using OpenSCAD's color() statement, so generally speaking the output will look like the
+preview (F5) view in OpenSCAD.
 
-It should work with OpenSCAD version 2015.03, but was mostly tested on 2019.05.
+AMF export should work with OpenSCAD version 2015.03, but was mostly tested on 2019.05.
+3MF export requires version 2019.05 or newer, and also requires some preparation steps (compilation).
 
 Usage
 -----
 ./colorscad.sh <\input scad file\> \<output file\> [MAX_PARALLEL_JOBS]
 
-The output file must not yet exist, and must have as extension '.amf'.
+The output file must not yet exist, and must have as extension either '.amf' or '.3mf'.
 MAX_PARALLEL_JOBS defaults to 8, reduce if you're low on RAM.
 
 How it works
 ------------
-First, the model is analysed to find out which colors (RGBA values) it uses. Then, OpenSCAD is used to generate an .amf
-file for each color, containing only geometry with that color. Finally, all per-color .amf files are combined, with
-color info added.
+First, the model is analysed to find out which colors (RGBA values) it uses.
+Then, OpenSCAD is used to generate an intermediate .amf or .3mf file for each color,
+containing only geometry with that color.
+Finally, all per-color intermediate files are combined, with color info added.
 
 Or, in a bit more detail:
 1) Convert the model to .csg format, mostly to resolve the various ways color() can be used into r/g/b/a parameters.
@@ -24,7 +27,7 @@ Or, in a bit more detail:
 3) Check that the produced .stl is empty; if not, complain about it and stubbornly refuse to continue.
 4) Loop over the captured set of r/g/b/a values. For each of them, call OpenSCAD with another redefined color() module
    that only outputs when its r/g/b/a parameters match. Use multiple OpenSCAD processes here to speed things up a bit.
-5) Combine all the individual .amf files, assigning material color.
+5) Combine all the individual intermediate files, assigning material color.
 
 Preparations
 ------------
@@ -37,17 +40,24 @@ There is no need to make any ColorSCAD-specific changes to your .scad file(s), h
    No fancy gradients, please.
 4) Let's avoid weird geometry such as overlapping color volumes...
 
+To export a 3MF file, the lib3mf library is needed, and the c++ '3mfmerge' tool using it first needs to be compiled.
+See [3mfmerge/README.md].
+
 Limitations
 -----------
 The .amf merging method is, hmm, a bit creative. The produced .amf should probably be one "object with multiple colored
 volumes", but instead it contains a separate object for each color. Reason: lazy shell-script .amf merge
 implementation is too slow to renumber vertices, which is needed for "single object with multiple volumes" format.
 
+Merging .3mf files uses the official library for it,
+although this means having a dependency which is not (yet) commonly available in all Linux distributions.
+
+When there are a lot of colors, on Windows this script runs much slower than on Linux
+(probably due to process creation costs).
+
 Importing some files (such as .stl geometry) might not work.
 
-Also, it's aimed at .amf, no .3mf so far (probably a lib3mf-based merge tool can be made).
-
-And probably some weird output may be produced if color volumes overlap.
+Probably some weird output may be produced if color volumes overlap.
 
 In fact, weird behavior may occur at any time! More testing is needed.
 If it doesn't seem to work for your .scad for any non-obvious reason, let's hear about it.
