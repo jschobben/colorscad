@@ -2,8 +2,10 @@
 #include "lib3mf_implicit.hpp"
 
 
-void mergeModels(char* outputFile)
+// Returns number of skipped input lines
+int mergeModels(char* outputFile)
 {
+  int skipped = 0;
   Lib3MF::PWrapper wrapper = Lib3MF::CWrapper::loadLibrary();
   Lib3MF::PModel mergedModel = wrapper->CreateModel();
   Lib3MF::PComponentsObject mergedComponentsObject = mergedModel->AddComponentsObject();
@@ -76,11 +78,13 @@ void mergeModels(char* outputFile)
     } catch (Lib3MF::ELib3MFException &e) {
       std::cerr << "Trouble while processing '" << line << "': " << e.what() << std::endl;
       std::cerr << "Will skip this file/color, and proceed anyway." << std::endl;
+      skipped++;
     }
   }
   mergedModel->AddBuildItem(mergedComponentsObject.get(), wrapper->GetIdentityTransform());
   Lib3MF::PWriter writer = mergedModel->QueryWriter("3mf");
   writer->WriteToFile(outputFile);
+  return skipped;
 }
 
 int main(int argc, char** argv)
@@ -96,7 +100,11 @@ int main(int argc, char** argv)
     return 1;
   }
   try {
-    mergeModels(argv[1]);
+    int skipped = mergeModels(argv[1]);
+    if (skipped > 0) {
+      std::cerr << "Warning: " << skipped << " input files were skipped!" << std::endl;
+      return 1;
+    }
   } catch (Lib3MF::ELib3MFException &e) {
     std::cerr << e.what() << std::endl;
     return e.getErrorCode();
