@@ -111,7 +111,9 @@ wait
 
 echo
 echo "Generate a merged .${FORMAT} file"
+MERGE_STATUS=0
 if [ "$FORMAT" = amf ]; then
+	SKIPPED=0
 	{
 		echo '<?xml version="1.0" encoding="UTF-8"?>'
 		echo '<amf unit="millimeter">'
@@ -136,6 +138,7 @@ if [ "$FORMAT" = amf ]; then
 				cat "${TEMPDIR}/${COLOR}.amf" | tail -n +5 | head -n -1 | sed "s/<volume>/<volume materialid=\"${id}\">/"
 			else
 				echo "Skipping ${COLOR}!" >&2
+				let SKIPPED++
 			fi
 			let id++
 			echo -ne "\r${id}/${COLOR_COUNT} " >&2
@@ -144,20 +147,32 @@ if [ "$FORMAT" = amf ]; then
 	} > "$OUTPUT"
 
 	echo
-	echo "AMF file created successfully."
 	echo "To create a compressed AMF, run:"
 	echo "  zip '${OUTPUT}.zip' '$OUTPUT' && mv '${OUTPUT}.zip' '${OUTPUT}'"
 	echo "But, be aware that some tools may not support compressed AMF files."
+
+	if [ "$SKIPPED" -gt 0 ]; then
+		echo "Warning: ${SKIPPED} input files were skipped!"
+		MERGE_STATUS=1
+	fi
 elif [ "$FORMAT" = 3mf ]; then
 	# Run from inside TEMPDIR, to support having a Windows-format 3mfmerge binary
 	(
 		cd "$TEMPDIR"
-		echo "$COLORS" | sed "s/\$/\.${INTERMEDIATE}/" \
-			| "${DIR_3MFMERGE}"/build/3mfmerge merged.3mf
+		"${DIR_3MFMERGE}"/build/3mfmerge merged.3mf < \
+				<(echo "$COLORS" | sed "s/\$/\.${INTERMEDIATE}/")
 	)
+	MERGE_STATUS=$?
 	mv "${TEMPDIR}"/merged.3mf "$OUTPUT"
 else
 	echo "Merging of format '${FORMAT}' not yet implemented!"
+	exit 1
 fi
 
-echo "Done"
+echo
+echo -n "${OUTPUT} created"
+if [ "${MERGE_STATUS}" -eq 0 ]; then
+	echo " successfully."
+else
+	echo ", but there were some problems (merge step exit status: ${MERGE_STATUS})."
+fi
