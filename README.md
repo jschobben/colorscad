@@ -19,7 +19,7 @@ It hasn't been verified yet whether it works on Bash 3 (i.e. Mac's non-Homebrew 
 
 Usage
 -----
-./colorscad.sh <\input scad file\> \<output file\> [MAX_PARALLEL_JOBS]
+./colorscad.sh \<input scad file\> \<output file\> [MAX_PARALLEL_JOBS]
 
 The output file must not yet exist, and must have as extension either '.amf' or '.3mf'.
 MAX_PARALLEL_JOBS defaults to 8, reduce if you're low on RAM.
@@ -51,7 +51,7 @@ There is no need to make any ColorSCAD-specific changes to your .scad file(s), h
 4) Let's avoid weird geometry such as overlapping color volumes...
 
 To export a 3MF file, the lib3mf library is needed, and the c++ '3mfmerge' tool using it first needs to be compiled.
-See [3mfmerge/README.md].
+See [3mfmerge/README.md](3mfmerge/README.md).
 
 Limitations
 -----------
