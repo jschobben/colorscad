@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.1.0] - 2020-02-19
 ### Added
 - Add 3MF support, via lib3mf and the (included) c++ tool '3mfmerge'
 - CLI interface: now need to explicitly specify output file name
@@ -19,5 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Everything! Only supports creating a colored .amf file.
 
-[Unreleased]: https://github.com/jschobben/colorscad/compare/v0.0.1...HEAD
+[Unreleased]: https://github.com/jschobben/colorscad/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/jschobben/colorscad/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/jschobben/colorscad/releases/tag/v0.0.1
