@@ -2,12 +2,12 @@
 ========
 This tool merges a given set of .3mf models into one.
 Material color of each individual input model is set, based on the filename.
-It uses [Lib3MF|https://github.com/3MFConsortium/lib3mf] to do the work.
+It uses [Lib3MF](https://github.com/3MFConsortium/lib3mf) to do the work.
 
 Requirements
 ------------
 Lib3MF v2 is required. If that is not available in your OS's package manager,
-either [download the SDK binaries|https://github.com/3MFConsortium/lib3mf/releases] or build it from source.
+either [download the SDK binaries](https://github.com/3MFConsortium/lib3mf/releases) or build it from source.
 
 The colorscad.sh script expects a binary called '3mfmerge' in the '3mfmerge/build/' dir.
 
@@ -23,7 +23,7 @@ cmake ..
 cmake --build .
 ```
 
-Windows users are best off installing the precompiled lib3mf release: [https://github.com/3MFConsortium/lib3mf/releases].
+Windows users are best off installing the precompiled lib3mf release: <https://github.com/3MFConsortium/lib3mf/releases>.
 Download the latest lib3mf_sdk_v2.x.y.zip from there, and unzip it somewhere.
 Also, make sure that the Windows-native version of CMake (>= v3.5) is installed, as well as a recent version of Visual Studio.
 Then, run the following from a Windows command prompt window (not from cygwin or so):
