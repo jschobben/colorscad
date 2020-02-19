@@ -4,8 +4,18 @@ This script helps with exporting an OpenSCAD model to AMF or 3MF format, with co
 The colors are simply assigned using OpenSCAD's color() statement, so generally speaking the output will look like the
 preview (F5) view in OpenSCAD.
 
+Requirements
+------------
+This script requires the Bash shell, and of course OpenSCAD.
 AMF export should work with OpenSCAD version 2015.03, but was mostly tested on 2019.05.
 3MF export requires version 2019.05 or newer, and also requires some preparation steps (compilation).
+
+Platform-wise, it should run anywhere Bash runs (that includes i.e. cygwin).
+No assumptions are made about OS-specific directories, such as /tmp/ and the like.
+The platform-native OpenSCAD binary does have to be reachable via the PATH,
+which means on Windows users may need to first run something like:
+```export PATH=/cygdrive/c/Program\ Files/OpenSCAD:$PATH```.
+It hasn't been verified yet whether it works on Bash 3 (i.e. Mac's non-Homebrew default).
 
 Usage
 -----
