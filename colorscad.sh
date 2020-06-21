@@ -3,6 +3,11 @@ INPUT=$1
 OUTPUT=$2
 PARALLEL_JOB_LIMIT=${3:-8}
 
+if [ "$(uname)" = Darwin ]; then
+	# Add GNU coreutils to the path for macOS users (`brew install coreutils`).
+	PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
+fi
+
 if [ -z "$OUTPUT" ]; then
 	echo "Usage: $0 <input scad file> <output file> [MAX_PARALLEL_JOBS]"
 	echo "The output file must not yet exist, and must have as extension either '.amf' or '.3mf'."
