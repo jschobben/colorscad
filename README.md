@@ -10,7 +10,7 @@ This script requires the Bash shell, and of course OpenSCAD.
 AMF export should work with OpenSCAD version 2015.03, but was mostly tested on 2019.05.
 3MF export requires version 2019.05 or newer, and also requires some preparation steps (compilation).
 
-Platform-wise, it should run anywhere Bash runs (that includes i.e. cygwin).
+Platform-wise, it should run anywhere Bash runs (that includes i.e. cygwin) as long as GNU utilities are available on the path (macOS users should `brew install coreutils`).
 No assumptions are made about OS-specific directories, such as /tmp/ and the like.
 The platform-native OpenSCAD binary does have to be reachable via the PATH,
 which means on Windows users may need to first run something like:
