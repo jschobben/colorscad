@@ -6,35 +6,32 @@ It uses [Lib3MF](https://github.com/3MFConsortium/lib3mf) to do the work.
 
 Requirements
 ------------
-Lib3MF v2 is required. If that is not available in your OS's package manager,
-either [download the SDK binaries](https://github.com/3MFConsortium/lib3mf/releases) or build it from source.
+Lib3MF v2 is used, which is downloaded to the build folder as part of the build process.
+That means it doesn't have to be manually installed,
+although an active internet connection is needed during the configuration stage.
 
-The colorscad.sh script expects a binary called '3mfmerge' in the '3mfmerge/build/' dir.
+The colorscad.sh script expects a binary called '3mfmerge' in the '3mfmerge/bin/' dir,
+which is the default output location of the build.
 
 How to build
 ------------
-Here is how to compile 3mfmerge. As mentioned, the binary must afterwards be located at ```3mfmerge/build/3mfmerge```.
+Here is how to compile 3mfmerge. As mentioned, the binary will be produced at ```3mfmerge/bin/3mfmerge```.
 
-Linux users should be able to simply do this, if lib3mf v2 is properly installed:
+On most systems, the following should work:
 ```
 mkdir build
 cd build
-cmake ..
+cmake .. -DLIB3MF_TESTS=OFF
 cmake --build .
 ```
-
-Windows users are best off installing the precompiled lib3mf release: <https://github.com/3MFConsortium/lib3mf/releases>.
-Download the latest lib3mf_sdk_v2.x.y.zip from there, and unzip it somewhere.
-Also, make sure that the Windows-native version of CMake (>= v3.5) is installed, as well as a recent version of Visual Studio.
-Then, run the following from a Windows command prompt window (not from cygwin or so):
+Windows users should make sure that the native version of CMake (>= v3.14) is installed,
+as well as a recent version of Visual Studio. VS 2015 should work.
+The Windows build might fail due to some warning-as-error shenanigans in lib3mf,
+when making a 32-bit build which seems to be the default.
+To work around that, force a 64-bit build:
 ```
-set 3MF_SDK=<full path to where you unzipped the v2.x.y Lib3MF SDK>
-mkdir build
-cd build
-cmake -G "Visual Studio 14 2015 Win64" .. -DLIB3MF_CPP_BINDINGS_DIR=%3MF_SDK%/Bindings/Cpp -DLIB3MF_LOCATION=%3MF_SDK%/Lib/lib3mf.lib
+cmake .. -DLIB3MF_TESTS=OFF -DCMAKE_GENERATOR_PLATFORM=x64
 cmake --build .
-copy Debug\3mfmerge.exe .
-copy %3MF_SDK%\Bin\lib3mf.dll .
 ```
 
 Usage

@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
+3mfmerge:
+- No need to manually install lib3mf anymore: now it's fetched as source (2.1.1), and compiled as part of the build.
+- Raise CMake requirement to 3.14
+colorscad:
 - Improved OSX compatibility (thanks: Matt N.)
 
 ## [0.1.0] - 2020-02-19
