@@ -1,5 +1,5 @@
 #include <iostream>
-#include "lib3mf_implicit.hpp"
+#include <lib3mf_implicit.hpp>
 
 
 // Returns number of skipped input lines

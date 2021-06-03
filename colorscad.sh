@@ -29,7 +29,7 @@ INTERMEDIATE=$FORMAT # Format of the per-color intermediate results.
 
 if [ "$FORMAT" = 3mf ]; then
 	DIR_3MFMERGE=$(readlink -f ${0%/*})/3mfmerge
-	if ! [ -x ${DIR_3MFMERGE}/build/3mfmerge ] && ! [ -x ${DIR_3MFMERGE}/build/3mfmerge.exe ]; then
+	if ! [ -x ${DIR_3MFMERGE}/bin/3mfmerge ] && ! [ -x ${DIR_3MFMERGE}/bin/3mfmerge.exe ]; then
 		echo "3MF output depends on a binary tool, that needs to be compiled first."
 		echo "Please see '3mfmerge/README.md' in the colorscad git repo (i.e. '${DIR_3MFMERGE}/')."
 		exit 1
@@ -172,7 +172,7 @@ elif [ "$FORMAT" = 3mf ]; then
 	# Run from inside TEMPDIR, to support having a Windows-format 3mfmerge binary
 	(
 		cd "$TEMPDIR"
-		"${DIR_3MFMERGE}"/build/3mfmerge merged.3mf < \
+		"${DIR_3MFMERGE}"/bin/3mfmerge merged.3mf < \
 				<(echo "$COLORS" | sed "s/\$/\.${INTERMEDIATE}/")
 	)
 	MERGE_STATUS=$?
