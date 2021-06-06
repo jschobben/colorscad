@@ -1,24 +1,77 @@
 #!/bin/bash
-INPUT=$1
-OUTPUT=$2
-PARALLEL_JOB_LIMIT=${3:-8}
+
+OPENSCAD_EXTRA="";
+PARALLEL_JOB_LIMIT=8
+
+function usage {
+cat <<EOF
+Usage: $0 -i <input scad file> -o <output file>
+
+Options
+  -D  Variable to pass to Openscad, quoting hell, does some weird bits but input like
+        you would give openscad direct works.  For example: -D 'var1="foofly"' -D 'var2="another thing"'
+  -e  Openscad extra (freeform extra options to pass to Openscad)
+  -f  Force, this will overwrite the output file if it exists
+  -h  This msg you are reading
+  -i  Input file
+  -o  Output file must not yet exist, and must have as extension either '.amf' or '.3mf'.
+  -p  MAX_PARALLEL_JOBS (defualt is 8) reduce if you're low on RAM.
+
+EOF
+}
+
+while getopts :D:e:fi:o:p:h opt; do
+  case "$opt" in
+    D)
+      OPENSCAD_EXTRA="$OPENSCAD_EXTRA -D '$OPTARG'"
+    ;;
+    e)
+      OPENSCAD_EXTRA="$OPENSCAD_EXTRA $OPTARG"
+    ;;
+    f)
+     force=1;
+    ;;
+    h)
+     usage;
+     exit;
+    ;;
+    i)
+      INPUT="$OPTARG"
+    ;;
+    o)
+      OUTPUT="$OPTARG"
+    ;;
+    p)
+      PARALLEL_JOB_LIMIT="$OPTARG"
+    ;;
+    \?)
+      echo "Unknown option: $OPTARG";
+      exit;
+    ;;
+  esac
+done
+
+
 
 if [ "$(uname)" = Darwin ]; then
-	# Add GNU coreutils to the path for macOS users (`brew install coreutils`).
-	PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
+  # Add GNU coreutils to the path for macOS users (`brew install coreutils`).
+  PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
 fi
 
-if [ -z "$OUTPUT" ]; then
-	echo "Usage: $0 <input scad file> <output file> [MAX_PARALLEL_JOBS]"
-	echo "The output file must not yet exist, and must have as extension either '.amf' or '.3mf'."
-	echo "MAX_PARALLEL_JOBS defaults to 8, reduce if you're low on RAM."
-	exit 1
+if [ -z "$OUTPUT" -o -z "$INPUT" ];then
+  echo "You must provide both input (-i) and output (-o) files.  See help (-h)."
+  exit 1
 fi
 
 if [ -e "$OUTPUT" ]; then
-	echo "Output '$OUTPUT' already exists, aborting."
-	exit 1
+  if [ "$force" -eq 1 ];then
+    rm "$OUTPUT"
+  else
+    echo "Output '$OUTPUT' already exists, aborting."
+    exit 1
+  fi
 fi
+
 FORMAT=${OUTPUT##*.}
 if [ "$FORMAT" != amf ] && [ "$FORMAT" != 3mf ]; then
 	echo "Error: the output file's extension must be one of 'amf' or '3mf', but it is '$FORMAT'."
@@ -41,14 +94,22 @@ if ! which openscad &> /dev/null; then
 	exit 1
 fi
 
-# Convert input to a .csg file, mainly to resolve named colors. Also to evaluate functions etc. only once.
-# Put .csg file in current directory, to be cygwin-friendly (Windows openscad doesn't know about /tmp/).
-INPUT_CSG=$(mktemp --tmpdir=. --suffix=.csg)
-openscad "$INPUT" -o "$INPUT_CSG"
 
 # Working directory, plus cleanup trigger
 TEMPDIR=$(mktemp -d)
-trap "rm -Rf '$INPUT_CSG' '$TEMPDIR'" EXIT
+trap "rm -Rf '$TEMPDIR'" EXIT
+
+# Convert input to a .csg file, mainly to resolve named colors. Also to evaluate functions etc. only once.
+# Put .csg file in current directory, to be cygwin-friendly (Windows openscad doesn't know about /tmp/).
+INPUT_CSG=$(mktemp --tmpdir=$TEMPDIR --suffix=.csg)
+
+##  This is a bit hacky, I could not get quoting correct to pass in -D 'var="some test"' correct without xargs.
+##    Seems really ugly, but it just was not playing nice.  Pass in like -D 'var1="foofly"' -D 'var2="another thing"' works now
+##  Another note, openscad puts the output relative to the input, so changed it to full output path, with the added bonus utilizing
+##    the same tempdir as everything else
+openscad_cmd="\"$INPUT\" -o \"$INPUT_CSG\" $OPENSCAD_EXTRA";
+echo "Running:  openscad $openscad_cmd";
+echo "$openscad_cmd" |xargs openscad
 
 echo "Get list of used colors"
 # Here we run openscad once on the .csg file, with a redefined "color" module that just echoes its parameters. There are two outputs:
@@ -69,6 +130,8 @@ COLORS=$(
 mv "$TEMPFILE" "${TEMPDIR}/no_color.stl"
 COLOR_COUNT=$(echo "$COLORS" | wc -l)
 echo "${COLOR_COUNT} unique colors were found."
+echo -e "#####\n$COLORS\n#####"
+
 
 # If "no_color.stl" contains anything, it's considered a fatal error:
 # any geometry that doesn't have a color assigned, would end up in all per-color AMF files
@@ -76,7 +139,7 @@ if [ -s "${TEMPDIR}/no_color.stl" ]; then
 	echo
 	echo "Fatal error: some geometry is not wrapped in a color() module."
 	echo "For a stacktrace, try running:"
-	echo -n "openscad '$INPUT' -o output.csg -D 'module color(c,alpha=1){}"
+	echo -n "openscad $OPENSCAD_EXTRA '$INPUT' -o output.csg -D 'module color(c,alpha=1){}"
 	for primitive in cube sphere cylinder polyhedron; do
 		echo -n " module ${primitive}(){assert(false);}"
 	done
@@ -84,45 +147,47 @@ if [ -s "${TEMPDIR}/no_color.stl" ]; then
 	exit 1
 fi
 
-echo
-echo "Create a separate .${INTERMEDIATE} file for each color"
-IFS=$'\n'
-ACTIVE_JOBS=0
-JOB_ID=0
-COMPLETED=0
-for COLOR in $COLORS; do
-	let JOB_ID++
-	if [ $ACTIVE_JOBS -ge $PARALLEL_JOB_LIMIT ]; then
-		# Wait for one job to finish, before continuing
-		wait -n
-		let ACTIVE_JOBS--
-		let COMPLETED++
-		echo -ne "Jobs completed: ${COMPLETED}/${COLOR_COUNT} \r"
-	fi
-	# Run job in background, and prefix all terminal output with the job ID and color to show progress
-	(
-		# To support Windows/cygwin, render to temp file in input directory and later move it to TEMPDIR.
-		TEMPFILE=$(mktemp --tmpdir=. --suffix=.${INTERMEDIATE})
-		openscad "$INPUT_CSG" -o "$TEMPFILE" -D "module color(c) {if (str(c) == \"${COLOR}\") children();}"
-		if [ -s "$TEMPFILE" ]; then
-			mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.${INTERMEDIATE}"
-		else
-			echo "Warning: output is empty!"
-			rm "$TEMPFILE"
-		fi
-	) 2>&1 | sed "s/^/${JOB_ID}\/${COLOR_COUNT} ${COLOR} /" &
-	let ACTIVE_JOBS++
-done
-# Wait for all remaining jobs to finish
-while [ $ACTIVE_JOBS -gt 0 ]; do
-	wait -n 1
-	let ACTIVE_JOBS--
-	let COMPLETED++
-	echo -ne "Jobs completed: ${COMPLETED}/${COLOR_COUNT} \r"
-done
-echo
+echo -e "\nCreate a separate .${INTERMEDIATE} file for each color"
 
-echo
+
+function generate_csg {
+  INPUT_CSG=$1;
+  INTERMEDIATE=$2;
+  TEMPDIR=$3;
+  COLOR=$4;
+
+  TEMPFILE=$(mktemp --tmpdir=. --suffix=.${INTERMEDIATE})
+  echo "$COLOR Starting"
+  openscad "$INPUT_CSG" -o "$TEMPFILE" -D "module color(c) {if (str(c) == \"${COLOR}\") children();}" 2>&1 |sed "s/^/$COLOR /g"
+  if [ -s "$TEMPFILE" ]; then
+    mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.${INTERMEDIATE}"
+  else
+    echo "$COLOR Warning: output is empty!"
+    rm "$TEMPFILE"
+  fi
+  echo "$COLOR finished at ${TEMPDIR}/${COLOR}.${INTERMEDIATE}";
+}
+
+command -v parallel > /dev/null
+if [ $? -ne 0 ];then
+  echo "WARNING:  You have thread count set to $PARALLEL_JOB_LIMIT however 'parallel' does not appear to be installed.";
+  echo "Setting thread count to 1 to run in series, if you find generation too slow you should install 'parallel'"
+  PARALLEL_JOB_LIMIT=1;
+fi
+
+if [ $PARALLEL_JOB_LIMIT -eq 1 ];then
+  IFS=$'\n'
+  for COLOR in $COLORS; do
+    generate_csg $INPUT_CSG $INTERMEDIATE $TEMPDIR $COLOR
+  done
+else
+  echo "$COLORS"
+  export -f generate_csg
+  echo "$COLORS" | parallel -P $PARALLEL_JOB_LIMIT generate_csg $INPUT_CSG $INTERMEDIATE $TEMPDIR
+fi;
+
+echo -e "\n###  Completed openscad CSG generation  ###\n"
+
 echo "Generate a merged .${FORMAT} file"
 MERGE_STATUS=0
 if [ "$FORMAT" = amf ]; then
