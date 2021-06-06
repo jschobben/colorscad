@@ -5,6 +5,9 @@ cat <<EOF
 Usage: $0 -i <input scad file> -o <output file> [OTHER OPTIONS...]
 
 Options
+  -D  Variable to pass to Openscad, quoting hell, does some weird bits but input like
+        you would give openscad direct works.  For example: -D 'var1="foofly"' -D 'var2="another thing"'
+  -e  Openscad extra (freeform extra options to pass to Openscad)
   -f  Force, this will overwrite the output file if it exists
   -h  This message you are reading
   -i  Input file
@@ -18,8 +21,15 @@ FORCE=0
 INPUT=
 OUTPUT=
 PARALLEL_JOB_LIMIT=8
-while getopts :fhi:j:o: opt; do
+OPENSCAD_EXTRA="";
+while getopts :D:e:fhi:j:o: opt; do
 	case "$opt" in
+		D)
+			OPENSCAD_EXTRA="$OPENSCAD_EXTRA -D '$OPTARG'"
+		;;
+		e)
+			OPENSCAD_EXTRA="$OPENSCAD_EXTRA $OPTARG"
+		;;
 		f)
 			FORCE=1;
 		;;
@@ -83,7 +93,12 @@ fi
 # Convert input to a .csg file, mainly to resolve named colors. Also to evaluate functions etc. only once.
 # Put .csg file in current directory, to be cygwin-friendly (Windows openscad doesn't know about /tmp/).
 INPUT_CSG=$(mktemp --tmpdir=. --suffix=.csg)
-openscad "$INPUT" -o "$INPUT_CSG"
+
+##  This is a bit hacky, I could not get quoting correct to pass in -D 'var="some test"' correct without xargs.
+##    Seems really ugly, but it just was not playing nice.  Pass in like -D 'var1="foofly"' -D 'var2="another thing"' works now
+openscad_cmd="\"$INPUT\" -o \"$INPUT_CSG\" $OPENSCAD_EXTRA";
+echo "Running:  openscad $openscad_cmd";
+echo "$openscad_cmd" |xargs openscad
 
 # Working directory, plus cleanup trigger
 TEMPDIR=$(mktemp -d)
@@ -115,7 +130,7 @@ if [ -s "${TEMPDIR}/no_color.stl" ]; then
 	echo
 	echo "Fatal error: some geometry is not wrapped in a color() module."
 	echo "For a stacktrace, try running:"
-	echo -n "openscad '$INPUT' -o output.csg -D 'module color(c,alpha=1){}"
+	echo -n "openscad $OPENSCAD_EXTRA '$INPUT' -o output.csg -D 'module color(c,alpha=1){}"
 	for primitive in cube sphere cylinder polyhedron; do
 		echo -n " module ${primitive}(){assert(false);}"
 	done
