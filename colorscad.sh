@@ -113,6 +113,8 @@ COLORS=$(
 mv "$TEMPFILE" "${TEMPDIR}/no_color.stl"
 COLOR_COUNT=$(echo "$COLORS" | wc -l)
 echo "${COLOR_COUNT} unique colors were found."
+echo -e "#####\n$COLORS\n#####"
+
 
 # If "no_color.stl" contains anything, it's considered a fatal error:
 # any geometry that doesn't have a color assigned, would end up in all per-color AMF files
@@ -146,6 +148,7 @@ function render_color {
 	{
 		# To support Windows/cygwin, render to temp file in input directory and later move it to TEMPDIR.
 		TEMPFILE=$(mktemp --tmpdir=. --suffix=.${FORMAT})
+		echo "Starting"
 		openscad "$INPUT_CSG" -o "$TEMPFILE" -D "module color(c) {if (str(c) == \"${COLOR}\") children();}"
 		if [ -s "$TEMPFILE" ]; then
 			mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.${FORMAT}"
@@ -153,6 +156,7 @@ function render_color {
 			echo "Warning: output is empty!"
 			rm "$TEMPFILE"
 		fi
+		echo "finished at ${TEMPDIR}/${COLOR}.${FORMAT}"
 	} 2>&1 | sed -u "s/^/${COLOR} /"
 }
 
@@ -182,7 +186,8 @@ while [ $ACTIVE_JOBS -gt 0 ]; do
 done
 echo
 
-echo
+echo -e "\n###  Completed openscad CSG generation  ###\n"
+
 echo "Generate a merged .${FORMAT} file"
 MERGE_STATUS=0
 if [ "$FORMAT" = amf ]; then
