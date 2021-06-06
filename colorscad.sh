@@ -5,6 +5,7 @@ cat <<EOF
 Usage: $0 -i <input scad file> -o <output file> [OTHER OPTIONS...]
 
 Options
+  -f  Force, this will overwrite the output file if it exists
   -h  This message you are reading
   -i  Input file
   -j  Maximum number of parallel jobs to use: defaults to 8, reduce if you're low on RAM
@@ -15,8 +16,11 @@ EOF
 INPUT=
 OUTPUT=
 PARALLEL_JOB_LIMIT=8
-while getopts :hi:j:o: opt; do
+while getopts :fhi:j:o: opt; do
 	case "$opt" in
+		f)
+			force=1;
+		;;
 		h)
 			usage
 			exit
@@ -48,8 +52,12 @@ if [ -z "$INPUT" -o -z "$OUTPUT" ]; then
 fi
 
 if [ -e "$OUTPUT" ]; then
-	echo "Output '$OUTPUT' already exists, aborting."
-	exit 1
+	if [ "$force" -eq 1 ];then
+		rm "$OUTPUT"
+	else
+		echo "Output '$OUTPUT' already exists, aborting."
+		exit 1
+	fi
 fi
 
 FORMAT=${OUTPUT##*.}
