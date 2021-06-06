@@ -1,17 +1,51 @@
 #!/bin/bash
-INPUT=$1
-OUTPUT=$2
-PARALLEL_JOB_LIMIT=${3:-8}
+
+PARALLEL_JOB_LIMIT=8
+
+function usage {
+cat <<EOF
+Usage: $0 -i <input scad file> -o <output file>
+
+Options
+  -h  This msg you are reading
+  -i  Input file
+  -o  Output file must not yet exist, and must have as extension either '.amf' or '.3mf'.
+  -p  MAX_PARALLEL_JOBS (defualt is 8) reduce if you're low on RAM.
+
+EOF
+}
+
+while getopts :i:o:p:h opt; do
+	case "$opt" in
+		h)
+			usage;
+			exit;
+		;;
+		i)
+			INPUT="$OPTARG"
+		;;
+		o)
+			OUTPUT="$OPTARG"
+		;;
+		p)
+			PARALLEL_JOB_LIMIT="$OPTARG"
+		;;
+		\?)
+			echo "Unknown option: $OPTARG";
+			exit;
+		;;
+	esac
+done
+
+
 
 if [ "$(uname)" = Darwin ]; then
 	# Add GNU coreutils to the path for macOS users (`brew install coreutils`).
 	PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
 fi
 
-if [ -z "$OUTPUT" ]; then
-	echo "Usage: $0 <input scad file> <output file> [MAX_PARALLEL_JOBS]"
-	echo "The output file must not yet exist, and must have as extension either '.amf' or '.3mf'."
-	echo "MAX_PARALLEL_JOBS defaults to 8, reduce if you're low on RAM."
+if [ -z "$OUTPUT" -o -z "$INPUT" ];then
+	echo "You must provide both input (-i) and output (-o) files. See help (-h)."
 	exit 1
 fi
 
@@ -19,6 +53,7 @@ if [ -e "$OUTPUT" ]; then
 	echo "Output '$OUTPUT' already exists, aborting."
 	exit 1
 fi
+
 FORMAT=${OUTPUT##*.}
 if [ "$FORMAT" != amf ] && [ "$FORMAT" != 3mf ]; then
 	echo "Error: the output file's extension must be one of 'amf' or '3mf', but it is '$FORMAT'."
