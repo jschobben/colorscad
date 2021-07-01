@@ -9,17 +9,19 @@ Options
   -h  This message you are reading
   -i  Input file
   -j  Maximum number of parallel jobs to use: defaults to 8, reduce if you're low on RAM
-  -o  Output file: it must not yet exist, and must have as extension either '.amf' or '.3mf'
+  -o  Output file: it must not yet exist (unless option -f is used),
+      and must have as extension either '.amf' or '.3mf'
 EOF
 }
 
+FORCE=0
 INPUT=
 OUTPUT=
 PARALLEL_JOB_LIMIT=8
 while getopts :fhi:j:o: opt; do
 	case "$opt" in
 		f)
-			force=1;
+			FORCE=1;
 		;;
 		h)
 			usage
@@ -51,13 +53,9 @@ if [ -z "$INPUT" -o -z "$OUTPUT" ]; then
 	exit 1
 fi
 
-if [ -e "$OUTPUT" ]; then
-	if [ "$force" -eq 1 ];then
-		rm "$OUTPUT"
-	else
-		echo "Output '$OUTPUT' already exists, aborting."
-		exit 1
-	fi
+if [ -e "$OUTPUT" ] && [ "$FORCE" -ne 1 ]; then
+	echo "Output '$OUTPUT' already exists, aborting."
+	exit 1
 fi
 
 FORMAT=${OUTPUT##*.}
