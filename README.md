@@ -19,10 +19,10 @@ It hasn't been verified yet whether it works on Bash 3 (i.e. Mac's non-Homebrew 
 
 Usage
 -----
-./colorscad.sh \<input scad file\> \<output file\> [MAX_PARALLEL_JOBS]
+```./colorscad.sh -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]```
 
-The output file must not yet exist, and must have as extension either '.amf' or '.3mf'.
-MAX_PARALLEL_JOBS defaults to 8, reduce if you're low on RAM.
+The output file must have as extension either '.amf' or '.3mf'.
+For more detailed usage info that lists all the options, run `./colorscad.sh -h`.
 
 How it works
 ------------
