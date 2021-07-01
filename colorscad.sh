@@ -1,50 +1,48 @@
 #!/bin/bash
 
-PARALLEL_JOB_LIMIT=8
-
 function usage {
 cat <<EOF
-Usage: $0 -i <input scad file> -o <output file>
+Usage: $0 -i <input scad file> -o <output file> [OTHER OPTIONS...]
 
 Options
-  -h  This msg you are reading
+  -h  This message you are reading
   -i  Input file
-  -o  Output file must not yet exist, and must have as extension either '.amf' or '.3mf'.
-  -p  MAX_PARALLEL_JOBS (defualt is 8) reduce if you're low on RAM.
-
+  -j  Maximum number of parallel jobs to use: defaults to 8, reduce if you're low on RAM
+  -o  Output file: it must not yet exist, and must have as extension either '.amf' or '.3mf'
 EOF
 }
 
-while getopts :i:o:p:h opt; do
+INPUT=
+OUTPUT=
+PARALLEL_JOB_LIMIT=8
+while getopts :hi:j:o: opt; do
 	case "$opt" in
 		h)
-			usage;
-			exit;
+			usage
+			exit
 		;;
 		i)
 			INPUT="$OPTARG"
 		;;
+		j)
+			PARALLEL_JOB_LIMIT="$OPTARG"
+		;;
 		o)
 			OUTPUT="$OPTARG"
 		;;
-		p)
-			PARALLEL_JOB_LIMIT="$OPTARG"
-		;;
 		\?)
-			echo "Unknown option: $OPTARG";
-			exit;
+			echo "Unknown option: '-$OPTARG'. See help (-h)."
+			exit 1
 		;;
 	esac
 done
-
-
 
 if [ "$(uname)" = Darwin ]; then
 	# Add GNU coreutils to the path for macOS users (`brew install coreutils`).
 	PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
 fi
 
-if [ -z "$OUTPUT" -o -z "$INPUT" ];then
+if [ -z "$INPUT" -o -z "$OUTPUT" ]; then
 	echo "You must provide both input (-i) and output (-o) files. See help (-h)."
 	exit 1
 fi
