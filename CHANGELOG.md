@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+colorscad: several CLI parameter improvements (thanks: Colorscad Tester)
+- Proper CLI arg parsing with getopts (syntax change for specifying input/output!)
+- Add '-f' parameter to overwrite output if it exists
+- Support forwarding parameters to openscad (such as '-D')
 
 ## [0.2.0] - 2021-06-27
 ### Fixed

@@ -1,24 +1,69 @@
 #!/bin/bash
-INPUT=$1
-OUTPUT=$2
-PARALLEL_JOB_LIMIT=${3:-8}
+
+function usage {
+cat <<EOF
+Usage: $0 -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]
+
+Options
+  -f  Force, this will overwrite the output file if it exists
+  -h  This message you are reading
+  -i  Input file
+  -j  Maximum number of parallel jobs to use: defaults to 8, reduce if you're low on RAM
+  -o  Output file: it must not yet exist (unless option -f is used),
+      and must have as extension either '.amf' or '.3mf'
+
+Example which also includes some openscad options at the end:
+  $0 -i input.scad -o output.3mf -f -j 4 -- -D 'var="some value"' --hardwarnings
+EOF
+}
+
+FORCE=0
+INPUT=
+OUTPUT=
+PARALLEL_JOB_LIMIT=8
+while getopts :fhi:j:o: opt; do
+	case "$opt" in
+		f)
+			FORCE=1;
+		;;
+		h)
+			usage
+			exit
+		;;
+		i)
+			INPUT="$OPTARG"
+		;;
+		j)
+			PARALLEL_JOB_LIMIT="$OPTARG"
+		;;
+		o)
+			OUTPUT="$OPTARG"
+		;;
+		\?)
+			echo "Unknown option: '-$OPTARG'. See help (-h)."
+			exit 1
+		;;
+	esac
+done
+# Assign all parameters beyond '--' to OPENSCAD_EXTRA
+shift $(($OPTIND-1))
+OPENSCAD_EXTRA=("$@")
 
 if [ "$(uname)" = Darwin ]; then
 	# Add GNU coreutils to the path for macOS users (`brew install coreutils`).
 	PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
 fi
 
-if [ -z "$OUTPUT" ]; then
-	echo "Usage: $0 <input scad file> <output file> [MAX_PARALLEL_JOBS]"
-	echo "The output file must not yet exist, and must have as extension either '.amf' or '.3mf'."
-	echo "MAX_PARALLEL_JOBS defaults to 8, reduce if you're low on RAM."
+if [ -z "$INPUT" -o -z "$OUTPUT" ]; then
+	echo "You must provide both input (-i) and output (-o) files. See help (-h)."
 	exit 1
 fi
 
-if [ -e "$OUTPUT" ]; then
+if [ -e "$OUTPUT" ] && [ "$FORCE" -ne 1 ]; then
 	echo "Output '$OUTPUT' already exists, aborting."
 	exit 1
 fi
+
 FORMAT=${OUTPUT##*.}
 if [ "$FORMAT" != amf ] && [ "$FORMAT" != 3mf ]; then
 	echo "Error: the output file's extension must be one of 'amf' or '3mf', but it is '$FORMAT'."
@@ -44,7 +89,7 @@ fi
 # Convert input to a .csg file, mainly to resolve named colors. Also to evaluate functions etc. only once.
 # Put .csg file in current directory, to be cygwin-friendly (Windows openscad doesn't know about /tmp/).
 INPUT_CSG=$(mktemp --tmpdir=. --suffix=.csg)
-openscad "$INPUT" -o "$INPUT_CSG"
+openscad "$INPUT" -o "$INPUT_CSG" "${OPENSCAD_EXTRA[@]}"
 
 # Working directory, plus cleanup trigger
 TEMPDIR=$(mktemp -d)
@@ -76,7 +121,13 @@ if [ -s "${TEMPDIR}/no_color.stl" ]; then
 	echo
 	echo "Fatal error: some geometry is not wrapped in a color() module."
 	echo "For a stacktrace, try running:"
-	echo -n "openscad '$INPUT' -o output.csg -D 'module color(c,alpha=1){}"
+	echo -n "  openscad"
+	# Output quoted version of OPENSCAD_EXTRA, but exclude certain parameters that may confuse the stacktrace
+	for PARAM in "${OPENSCAD_EXTRA[@]}"; do
+		[ "$PARAM" = --hardwarnings ] && continue
+		printf ' %q' "$PARAM"
+	done
+	echo -n " '$INPUT' -o output.csg -D 'module color(c,alpha=1){}"
 	for primitive in cube sphere cylinder polyhedron; do
 		echo -n " module ${primitive}(){assert(false);}"
 	done
