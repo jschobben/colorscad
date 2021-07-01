@@ -2,18 +2,18 @@
 
 function usage {
 cat <<EOF
-Usage: $0 -i <input scad file> -o <output file> [OTHER OPTIONS...]
+Usage: $0 -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]
 
 Options
-  -D  Variable to pass to Openscad, quoting hell, does some weird bits but input like
-        you would give openscad direct works.  For example: -D 'var1="foofly"' -D 'var2="another thing"'
-  -e  Openscad extra (freeform extra options to pass to Openscad)
   -f  Force, this will overwrite the output file if it exists
   -h  This message you are reading
   -i  Input file
   -j  Maximum number of parallel jobs to use: defaults to 8, reduce if you're low on RAM
   -o  Output file: it must not yet exist (unless option -f is used),
       and must have as extension either '.amf' or '.3mf'
+
+Example which also includes some openscad options at the end:
+  $0 -i input.scad -o output.3mf -f -j 4 -- -D 'var="some value"' --hardwarnings
 EOF
 }
 
@@ -21,15 +21,8 @@ FORCE=0
 INPUT=
 OUTPUT=
 PARALLEL_JOB_LIMIT=8
-OPENSCAD_EXTRA="";
-while getopts :D:e:fhi:j:o: opt; do
+while getopts :fhi:j:o: opt; do
 	case "$opt" in
-		D)
-			OPENSCAD_EXTRA="$OPENSCAD_EXTRA -D '$OPTARG'"
-		;;
-		e)
-			OPENSCAD_EXTRA="$OPENSCAD_EXTRA $OPTARG"
-		;;
 		f)
 			FORCE=1;
 		;;
@@ -52,6 +45,9 @@ while getopts :D:e:fhi:j:o: opt; do
 		;;
 	esac
 done
+# Assign all parameters beyond '--' to OPENSCAD_EXTRA
+shift $(($OPTIND-1))
+OPENSCAD_EXTRA=("$@")
 
 if [ "$(uname)" = Darwin ]; then
 	# Add GNU coreutils to the path for macOS users (`brew install coreutils`).
@@ -93,12 +89,7 @@ fi
 # Convert input to a .csg file, mainly to resolve named colors. Also to evaluate functions etc. only once.
 # Put .csg file in current directory, to be cygwin-friendly (Windows openscad doesn't know about /tmp/).
 INPUT_CSG=$(mktemp --tmpdir=. --suffix=.csg)
-
-##  This is a bit hacky, I could not get quoting correct to pass in -D 'var="some test"' correct without xargs.
-##    Seems really ugly, but it just was not playing nice.  Pass in like -D 'var1="foofly"' -D 'var2="another thing"' works now
-openscad_cmd="\"$INPUT\" -o \"$INPUT_CSG\" $OPENSCAD_EXTRA";
-echo "Running:  openscad $openscad_cmd";
-echo "$openscad_cmd" |xargs openscad
+openscad "$INPUT" -o "$INPUT_CSG" "${OPENSCAD_EXTRA[@]}"
 
 # Working directory, plus cleanup trigger
 TEMPDIR=$(mktemp -d)
@@ -130,7 +121,13 @@ if [ -s "${TEMPDIR}/no_color.stl" ]; then
 	echo
 	echo "Fatal error: some geometry is not wrapped in a color() module."
 	echo "For a stacktrace, try running:"
-	echo -n "openscad $OPENSCAD_EXTRA '$INPUT' -o output.csg -D 'module color(c,alpha=1){}"
+	echo -n "  openscad"
+	# Output quoted version of OPENSCAD_EXTRA, but exclude certain parameters that may confuse the stacktrace
+	for PARAM in "${OPENSCAD_EXTRA[@]}"; do
+		[ "$PARAM" = --hardwarnings ] && continue
+		printf ' %q' "$PARAM"
+	done
+	echo -n " '$INPUT' -o output.csg -D 'module color(c,alpha=1){}"
 	for primitive in cube sphere cylinder polyhedron; do
 		echo -n " module ${primitive}(){assert(false);}"
 	done
