@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 function usage {
 cat <<EOF
@@ -105,7 +105,8 @@ COLOR_ID_TAG="colorid_$$_${RANDOM}"
 TEMPFILE=$(mktemp --tmpdir=. --suffix=.stl)
 COLORS=$(
 	openscad "$INPUT_CSG" -o "$TEMPFILE" -D "module color(c) {echo(${COLOR_ID_TAG}=str(c));}" 2>&1 |
-	sed -n "s/\\r//g; s/\"//g; s/^ECHO: ${COLOR_ID_TAG} = // p" |
+	tr -d '\r"' |
+	sed -n "s/^ECHO: ${COLOR_ID_TAG} = // p" |
 	sort |
 	uniq -c |
 	sort -rn |

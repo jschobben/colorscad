@@ -12,10 +12,14 @@ AMF export should work with OpenSCAD version 2015.03, but was mostly tested on 2
 
 Platform-wise, it should run anywhere Bash runs (that includes i.e. cygwin) as long as GNU utilities are available on the path (macOS users should `brew install coreutils`).
 No assumptions are made about OS-specific directories, such as /tmp/ and the like.
-The platform-native OpenSCAD binary does have to be reachable via the PATH,
-which means on Windows users may need to first run something like:
-```export PATH=/cygdrive/c/Program\ Files/OpenSCAD:$PATH```.
-It hasn't been verified yet whether it works on Bash 3 (i.e. Mac's non-Homebrew default).
+
+The platform-native OpenSCAD binary does need to be reachable via the PATH,
+which means on Windows Cygwin users may need to first run something like:\
+```export PATH=/cygdrive/c/Program\ Files/OpenSCAD:$PATH```\
+Similarly, Mac users can try:\
+```export PATH=/Applications/OpenSCAD.app/Contents/MacOS:$PATH```
+
+It should mostly work on Bash 3 (i.e. Mac's non-Homebrew default), although for best results Bash 4 is recommended.
 
 Usage
 -----
