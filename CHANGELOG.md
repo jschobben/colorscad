@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 colorscad:
 - Improve OSX compatibility
+- Some refactoring
 
 ## [0.3.0] - 2021-07-02
 ### Added

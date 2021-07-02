@@ -69,8 +69,6 @@ if [ "$FORMAT" != amf ] && [ "$FORMAT" != 3mf ]; then
 	echo "Error: the output file's extension must be one of 'amf' or '3mf', but it is '$FORMAT'."
 	exit 1
 fi
-INTERMEDIATE=$FORMAT # Format of the per-color intermediate results.
-# Lib3MF does not seem to like OpenSCAD's .stl format, otherwise colored 3mf export would be possible with 2015.03 too.
 
 if [ "$FORMAT" = 3mf ]; then
 	DIR_3MFMERGE=$(readlink -f ${0%/*})/3mfmerge
@@ -137,7 +135,7 @@ if [ -s "${TEMPDIR}/no_color.stl" ]; then
 fi
 
 echo
-echo "Create a separate .${INTERMEDIATE} file for each color"
+echo "Create a separate .${FORMAT} file for each color"
 IFS=$'\n'
 ACTIVE_JOBS=0
 JOB_ID=0
@@ -154,10 +152,10 @@ for COLOR in $COLORS; do
 	# Run job in background, and prefix all terminal output with the job ID and color to show progress
 	(
 		# To support Windows/cygwin, render to temp file in input directory and later move it to TEMPDIR.
-		TEMPFILE=$(mktemp --tmpdir=. --suffix=.${INTERMEDIATE})
+		TEMPFILE=$(mktemp --tmpdir=. --suffix=.${FORMAT})
 		openscad "$INPUT_CSG" -o "$TEMPFILE" -D "module color(c) {if (str(c) == \"${COLOR}\") children();}"
 		if [ -s "$TEMPFILE" ]; then
-			mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.${INTERMEDIATE}"
+			mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.${FORMAT}"
 		else
 			echo "Warning: output is empty!"
 			rm "$TEMPFILE"
@@ -225,7 +223,7 @@ elif [ "$FORMAT" = 3mf ]; then
 	(
 		cd "$TEMPDIR"
 		"${DIR_3MFMERGE}"/bin/3mfmerge merged.3mf < \
-				<(echo "$COLORS" | sed "s/\$/\.${INTERMEDIATE}/")
+				<(echo "$COLORS" | sed "s/\$/\.${FORMAT}/")
 	)
 	MERGE_STATUS=$?
 	mv "${TEMPDIR}"/merged.3mf "$OUTPUT"
