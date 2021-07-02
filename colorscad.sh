@@ -137,21 +137,23 @@ fi
 echo
 echo "Create a separate .${FORMAT} file for each color"
 
+# Render INPUT_CSG, but only process geometry for the given color.
+# Output is written to "$TEMPDIR/$COLOR.$FORMAT".
+# Variables INPUT_CSG, FORMAT and TEMPDIR should be defined.
+function render_color {
+	local COLOR=$1
 
-function generate_csg {
-	INPUT_CSG=$1;
-	FORMAT=$2;
-	TEMPDIR=$3;
-	COLOR=$4;
-
-	TEMPFILE=$(mktemp --tmpdir=. --suffix=.${FORMAT})
-	openscad "$INPUT_CSG" -o "$TEMPFILE" -D "module color(c) {if (str(c) == \"${COLOR}\") children();}" 2>&1 |sed "s/^/$COLOR /g"
-	if [ -s "$TEMPFILE" ]; then
-		mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.${FORMAT}"
-	else
-		echo "$COLOR Warning: output is empty!"
-		rm "$TEMPFILE"
-	fi
+	{
+		# To support Windows/cygwin, render to temp file in input directory and later move it to TEMPDIR.
+		TEMPFILE=$(mktemp --tmpdir=. --suffix=.${FORMAT})
+		openscad "$INPUT_CSG" -o "$TEMPFILE" -D "module color(c) {if (str(c) == \"${COLOR}\") children();}"
+		if [ -s "$TEMPFILE" ]; then
+			mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.${FORMAT}"
+		else
+			echo "Warning: output is empty!"
+			rm "$TEMPFILE"
+		fi
+	} 2>&1 | sed -u "s/^/${COLOR} /"
 }
 
 IFS=$'\n'
@@ -168,7 +170,7 @@ for COLOR in $COLORS; do
 		echo -ne "Jobs completed: ${COMPLETED}/${COLOR_COUNT} \r"
 	fi
 	# Run job in background, and prefix all terminal output with the job ID and color to show progress
-	generate_csg $INPUT_CSG $FORMAT $TEMPDIR $COLOR &
+	render_color "$COLOR" | sed -u "s/^/${JOB_ID}\/${COLOR_COUNT} /" &
 	let ACTIVE_JOBS++
 done
 # Wait for all remaining jobs to finish
