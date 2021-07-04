@@ -59,6 +59,13 @@ if [ "$(uname)" = Darwin ]; then
 	PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
 fi
 
+# Sanity check: on Cygwin, sometimes PATH isn't setup properly and 'sort' starts the Windows version
+if ! sort --version > /dev/null; then
+	echo "Error: your 'sort' command appears to be the wrong one, it is now: $(which sort)"
+	echo "Please fix your PATH, try: export PATH=/usr/bin:\$PATH"
+	exit 1
+fi
+
 if [ -z "$INPUT" -o -z "$OUTPUT" ]; then
 	echo "You must provide both input (-i) and output (-o) files. See help (-h)."
 	exit 1
