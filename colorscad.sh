@@ -128,13 +128,6 @@ COLORS=$(
 	sed 's/^[^\[]*//'
 )
 mv "$TEMPFILE" "${TEMPDIR}/no_color.stl"
-COLOR_COUNT=$(echo "$COLORS" | wc -l)
-echo "${COLOR_COUNT} unique colors were found."
-if [ $VERBOSE -eq 1 ]; then
-	echo
-	echo "List of colors found:"
-	echo "$COLORS"
-fi
 
 # If "no_color.stl" contains anything, it's considered a fatal error:
 # any geometry that doesn't have a color assigned, would end up in all per-color AMF files
@@ -154,6 +147,18 @@ if [ -s "${TEMPDIR}/no_color.stl" ]; then
 	done
 	echo "'"
 	exit 1
+fi
+
+if [ -z "$COLORS" ]; then
+	echo "Error: no colors were found at all. Looks like something went wrong..."
+	exit 1
+fi
+COLOR_COUNT=$(echo "$COLORS" | wc -l)
+echo "${COLOR_COUNT} unique colors were found."
+if [ $VERBOSE -eq 1 ]; then
+	echo
+	echo "List of colors found:"
+	echo "$COLORS"
 fi
 
 echo

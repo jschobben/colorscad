@@ -12,6 +12,7 @@ colorscad:
 colorscad: improved error handling
 - Input file does not exist
 - The wrong 'sort' command is used
+- No colors are found in the input (i.e. due to errors in the input)
 
 ## [0.3.1] - 2021-07-03
 ### Fixed
