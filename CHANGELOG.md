@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 colorscad:
 - Switch -v to enable verbose logging. Decrease verbosity by default, by using OpenSCAD's --quiet parameter.
+### Fixed
+colorscad: improved error handling
+- Input file does not exist
 
 ## [0.3.1] - 2021-07-03
 ### Fixed

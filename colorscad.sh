@@ -64,6 +64,11 @@ if [ -z "$INPUT" -o -z "$OUTPUT" ]; then
 	exit 1
 fi
 
+if ! [ -e "$INPUT" ]; then
+	echo "Input '$INPUT' does not exist, aborting."
+	exit 1
+fi
+
 if [ -e "$OUTPUT" ] && [ "$FORCE" -ne 1 ]; then
 	echo "Output '$OUTPUT' already exists, aborting."
 	exit 1
