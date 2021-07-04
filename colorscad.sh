@@ -11,6 +11,7 @@ Options
   -j  Maximum number of parallel jobs to use: defaults to 8, reduce if you're low on RAM
   -o  Output file: it must not yet exist (unless option -f is used),
       and must have as extension either '.amf' or '.3mf'
+  -v  Verbose logging: mostly, this enables the OpenSCAD rendering stats output (default disabled)
 
 Example which also includes some openscad options at the end:
   $0 -i input.scad -o output.3mf -f -j 4 -- -D 'var="some value"' --hardwarnings
@@ -21,7 +22,8 @@ FORCE=0
 INPUT=
 OUTPUT=
 PARALLEL_JOB_LIMIT=8
-while getopts :fhi:j:o: opt; do
+VERBOSE=0
+while getopts :fhi:j:o:v opt; do
 	case "$opt" in
 		f)
 			FORCE=1;
@@ -38,6 +40,9 @@ while getopts :fhi:j:o: opt; do
 		;;
 		o)
 			OUTPUT="$OPTARG"
+		;;
+		v)
+			VERBOSE=1
 		;;
 		\?)
 			echo "Unknown option: '-$OPTARG'. See help (-h)."
@@ -113,8 +118,11 @@ COLORS=$(
 mv "$TEMPFILE" "${TEMPDIR}/no_color.stl"
 COLOR_COUNT=$(echo "$COLORS" | wc -l)
 echo "${COLOR_COUNT} unique colors were found."
-echo -e "#####\n$COLORS\n#####"
-
+if [ $VERBOSE -eq 1 ]; then
+	echo
+	echo "List of colors found:"
+	echo "$COLORS"
+fi
 
 # If "no_color.stl" contains anything, it's considered a fatal error:
 # any geometry that doesn't have a color assigned, would end up in all per-color AMF files
@@ -149,14 +157,18 @@ function render_color {
 		# To support Windows/cygwin, render to temp file in input directory and later move it to TEMPDIR.
 		TEMPFILE=$(mktemp --tmpdir=. --suffix=.${FORMAT})
 		echo "Starting"
-		openscad "$INPUT_CSG" -o "$TEMPFILE" -D "module color(c) {if (str(c) == \"${COLOR}\") children();}"
+		local EXTRA_ARGS=
+		if [ $VERBOSE -ne 1 ]; then
+			EXTRA_ARGS=--quiet
+		fi
+		openscad "$INPUT_CSG" -o "$TEMPFILE" $EXTRA_ARGS -D "module color(c) {if (str(c) == \"${COLOR}\") children();}"
 		if [ -s "$TEMPFILE" ]; then
 			mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.${FORMAT}"
 		else
 			echo "Warning: output is empty!"
 			rm "$TEMPFILE"
 		fi
-		echo "finished at ${TEMPDIR}/${COLOR}.${FORMAT}"
+		echo "Finished at ${TEMPDIR}/${COLOR}.${FORMAT}"
 	} 2>&1 | sed -u "s/^/${COLOR} /"
 }
 
@@ -186,8 +198,7 @@ while [ $ACTIVE_JOBS -gt 0 ]; do
 done
 echo
 
-echo -e "\n###  Completed openscad CSG generation  ###\n"
-
+echo
 echo "Generate a merged .${FORMAT} file"
 MERGE_STATUS=0
 if [ "$FORMAT" = amf ]; then
