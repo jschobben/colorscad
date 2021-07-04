@@ -269,6 +269,10 @@ elif [ "$FORMAT" = 3mf ]; then
 				<(echo "$COLORS" | sed "s/\$/\.${FORMAT}/")
 	)
 	MERGE_STATUS=$?
+	if ! [ -s "${TEMPDIR}"/merged.3mf ]; then
+		echo "Merging failed, aborting!"
+		exit 1
+	fi
 	mv "${TEMPDIR}"/merged.3mf "$OUTPUT"
 else
 	echo "Merging of format '${FORMAT}' not yet implemented!"
