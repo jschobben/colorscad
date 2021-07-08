@@ -1,11 +1,13 @@
 3MFMerge
 ========
+
 This tool merges a given set of .3mf models into one.
 Material color of each individual input model is set, based on the filename.
 It uses [Lib3MF](https://github.com/3MFConsortium/lib3mf) to do the work.
 
 Requirements
 ------------
+
 Lib3MF v2 is used, which is downloaded to the build folder as part of the build process.
 That means it doesn't have to be manually installed,
 although an active internet connection is needed during the configuration stage.
@@ -15,6 +17,7 @@ which is the default output location of the build.
 
 How to build
 ------------
+
 Here is how to compile 3mfmerge. As mentioned, the binary will be produced at ```3mfmerge/bin/3mfmerge```.
 
 On most systems, the following should work:
@@ -36,5 +39,7 @@ cmake --build .
 
 Usage
 -----
+
 ```ls *.3mf | 3mfmerge OUTPUT_FILE```
+
 Run 3mfmerge without parameters for more details.
