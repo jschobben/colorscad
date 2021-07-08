@@ -127,6 +127,11 @@ openscad "$INPUT" -o "$INPUT_CSG" "${OPENSCAD_EXTRA[@]}"
 TEMPDIR=$(mktemp -d)
 trap "rm -Rf '$INPUT_CSG' '$TEMPDIR'" EXIT
 
+if ! [ -s "$INPUT_CSG" ]; then
+	echo "Error: the produced .csg is empty. Looks like something went wrong..."
+	exit 1
+fi
+
 echo "Get list of used colors"
 # Here we run openscad once on the .csg file, with a redefined "color" module that just echoes its parameters. There are two outputs:
 # 1) The echoed color values, which are extracted, sorted and stored in COLORS.
