@@ -68,6 +68,18 @@ else
 	}
 fi
 
+# Bash 3 (shipped with macOS) does not support 'wait -n', so sleep instead.
+# To upgrade bash on macOS, run: 'brew install bash'.
+if [ ${BASH_VERSINFO[0]} -lt 4 ]; then
+	function wait_n {
+		sleep 0.1
+	}
+else
+	function wait_n {
+		wait -n
+	}
+fi
+
 # Sanity check: on Cygwin, sometimes PATH isn't setup properly and 'sort' starts the Windows version
 if ! sort --version > /dev/null; then
 	echo "Error: your 'sort' command appears to be the wrong one, it is now: $(which sort)"
@@ -212,30 +224,18 @@ function render_color {
 }
 
 IFS=$'\n'
-ACTIVE_JOBS=0
 JOB_ID=0
-COMPLETED=0
 for COLOR in $COLORS; do
 	let JOB_ID++
-	if [ $ACTIVE_JOBS -ge $PARALLEL_JOB_LIMIT ]; then
+	if [ $(jobs | wc -l) -ge $PARALLEL_JOB_LIMIT ]; then
 		# Wait for one job to finish, before continuing
-		wait -n
-		let ACTIVE_JOBS--
-		let COMPLETED++
-		echo -ne "Jobs completed: ${COMPLETED}/${COLOR_COUNT} \r"
+		wait_n
 	fi
 	# Run job in background, and prefix all terminal output with the job ID and color to show progress
 	render_color "$COLOR" | sed_u "s/^/${JOB_ID}\/${COLOR_COUNT} /" &
-	let ACTIVE_JOBS++
 done
 # Wait for all remaining jobs to finish
-while [ $ACTIVE_JOBS -gt 0 ]; do
-	wait -n 1
-	let ACTIVE_JOBS--
-	let COMPLETED++
-	echo -ne "Jobs completed: ${COMPLETED}/${COLOR_COUNT} \r"
-done
-echo
+wait
 
 echo
 echo "Generate a merged .${FORMAT} file"
