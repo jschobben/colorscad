@@ -198,11 +198,11 @@ function render_color {
 		openscad "$INPUT_CSG" -o "$TEMPFILE" $EXTRA_ARGS -D "module color(c) {if (str(c) == \"${COLOR}\") children();}"
 		if [ -s "$TEMPFILE" ]; then
 			mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.${FORMAT}"
+			echo "Finished at ${TEMPDIR}/${COLOR}.${FORMAT}"
 		else
-			echo "Warning: output is empty!"
+			echo "Warning: output is empty, removing it!"
 			rm "$TEMPFILE"
 		fi
-		echo "Finished at ${TEMPDIR}/${COLOR}.${FORMAT}"
 	} 2>&1 | sed_u "s/^/${COLOR} /"
 }
 
