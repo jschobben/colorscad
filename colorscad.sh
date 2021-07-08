@@ -96,18 +96,26 @@ if [ "$FORMAT" != amf ] && [ "$FORMAT" != 3mf ]; then
 	exit 1
 fi
 
+if ! which openscad &> /dev/null; then
+	echo "Error: openscad command not found! Make sure it's in your PATH."
+	exit 1
+fi
+
 if [ "$FORMAT" = 3mf ]; then
+	# Check if openscad was built with 3mf support
+	if ! openscad --info 2>&1 | grep '^lib3mf version: ' | grep -qv 'not enabled'; then
+		echo "Warning: your openscad version does not seem to have 3MF support, see 'openscad --info'."
+		echo "Either update it, or use AMF output."
+		echo
+		# Not treating this as a fatal error, because '--info' sometimes fails and cause a false alarm.
+	fi
+
 	DIR_3MFMERGE=$(readlink -f ${0%/*})/3mfmerge
 	if ! [ -x ${DIR_3MFMERGE}/bin/3mfmerge ] && ! [ -x ${DIR_3MFMERGE}/bin/3mfmerge.exe ]; then
 		echo "3MF output depends on a binary tool, that needs to be compiled first."
 		echo "Please see '3mfmerge/README.md' in the colorscad git repo (i.e. '${DIR_3MFMERGE}/')."
 		exit 1
 	fi
-fi
-
-if ! which openscad &> /dev/null; then
-	echo "Error: openscad command not found! Make sure it's in your PATH."
-	exit 1
 fi
 
 # Convert input to a .csg file, mainly to resolve named colors. Also to evaluate functions etc. only once.

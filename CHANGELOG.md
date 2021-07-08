@@ -16,6 +16,8 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 ### Fixed - colorscad
 
 - Now it really works on OSX, 0.3.1 actually didn't because of using 'sed -u'
+- A few more sanity checks:
+  - Check if 'openscad --info' reports 3MF support
 
 ## [0.4.0] - 2021-07-04
 
