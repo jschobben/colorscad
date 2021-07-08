@@ -57,6 +57,15 @@ OPENSCAD_EXTRA=("$@")
 if [ "$(uname)" = Darwin ]; then
 	# Add GNU coreutils to the path for macOS users (`brew install coreutils`).
 	PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
+
+	# BSD sed, as used on macOS, uses a different parameter than GNU sed to enable line-buffered mode
+	function sed_u {
+		sed -l "$@"
+	}
+else
+	function sed_u {
+		sed -u "$@"
+	}
 fi
 
 # Sanity check: on Cygwin, sometimes PATH isn't setup properly and 'sort' starts the Windows version
@@ -186,7 +195,7 @@ function render_color {
 			rm "$TEMPFILE"
 		fi
 		echo "Finished at ${TEMPDIR}/${COLOR}.${FORMAT}"
-	} 2>&1 | sed -u "s/^/${COLOR} /"
+	} 2>&1 | sed_u "s/^/${COLOR} /"
 }
 
 IFS=$'\n'
@@ -203,7 +212,7 @@ for COLOR in $COLORS; do
 		echo -ne "Jobs completed: ${COMPLETED}/${COLOR_COUNT} \r"
 	fi
 	# Run job in background, and prefix all terminal output with the job ID and color to show progress
-	render_color "$COLOR" | sed -u "s/^/${JOB_ID}\/${COLOR_COUNT} /" &
+	render_color "$COLOR" | sed_u "s/^/${JOB_ID}\/${COLOR_COUNT} /" &
 	let ACTIVE_JOBS++
 done
 # Wait for all remaining jobs to finish
