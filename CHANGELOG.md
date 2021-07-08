@@ -9,6 +9,10 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+### Fixed - 3mfmerge
+
+- Explain how to build on non-x86_64 platforms, such as ARM
+
 ## [0.4.0] - 2021-07-04
 
 ### Added

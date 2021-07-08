@@ -37,6 +37,29 @@ cmake .. -DLIB3MF_TESTS=OFF -DCMAKE_GENERATOR_PLATFORM=x64
 cmake --build .
 ```
 
+### Building on non-x86_64-based systems
+
+The currently used version of dependency Lib3MF (v2.1.1) uses
+[AutomaticComponentToolkit 1.6.0](https://github.com/Autodesk/AutomaticComponentToolkit/tree/v1.6.0)
+(ACT) as part of its build system.
+The Lib3MF source includes binaries of ACT for x86_64-based platforms,
+which obviously won't work if your platform is for instance ARM-based.
+See also [Lib3MF issue 199](https://github.com/3MFConsortium/lib3mf/issues/199).
+
+The workaround is, of course, to use another ACT binary that matches your platform.
+If possible, install ACT (>= v1.6.0) using your platform's favorite package manager.
+If not available, build ACT from source, which requires Go (golang):
+- clone the ACT repo, check out tag v1.6.0
+- from the root of the ACT repo, run: `go build -o act Source/*.go`
+- when done, copy or symlink the `act` binary to e.g. `/usr/local/bin/act`
+
+With ACT installed, it's time for the workaround:
+- make sure that running `act` works and shows v1.6.0 or up
+- run the initial `cmake .. -DLIB3MF_TESTS=OFF` as above
+- replace the `act.linux` binary:
+  `ln -sf $(which act) _deps/lib3mf-src/AutomaticComponentToolkit/bin/act.linux`
+- build as usual: `cmake --build .`
+
 Usage
 -----
 
