@@ -9,6 +9,8 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+## [0.4.1] - 2021-07-09
+
 ### Fixed - 3mfmerge
 
 - Explain how to build on non-x86_64 platforms, such as ARM
@@ -84,7 +86,8 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 - Everything! Only supports creating a colored .amf file.
 
-[Unreleased]: https://github.com/jschobben/colorscad/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/jschobben/colorscad/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/jschobben/colorscad/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/jschobben/colorscad/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/jschobben/colorscad/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/jschobben/colorscad/compare/v0.2.0...v0.3.0
