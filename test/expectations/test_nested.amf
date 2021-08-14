@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<amf unit="millimeter">
+ <metadata type="producer">ColorSCAD</metadata>
+ <material id="0"><color><r>1</r><g>0</g><b>0</b><a>1</a></color></material>
+</amf>

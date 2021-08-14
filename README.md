@@ -62,6 +62,15 @@ There is no need to make any ColorSCAD-specific changes to your .scad file(s), h
 To export a 3MF file, the lib3mf library is needed, and the c++ '3mfmerge' tool using it first needs to be compiled.
 See [3mfmerge/README.md](3mfmerge/README.md).
 
+Tests
+-----
+
+To make sure everything works as expected, run the tests by executing the script in `test/run.sh`.
+It tests two things: handling of strange situations, and that generated AMF/3MF models are as expected.
+On older OpenSCAD versions, or on newer versions compiled without 3MF support,
+additional parameters need to be given to make the tests pass.
+If applicable, the test script will alert about this.
+
 Limitations
 -----------
 
@@ -75,9 +84,7 @@ although this means having a dependency which is not (yet) commonly available in
 When there are a lot of colors, on Windows this script runs much slower than on Linux
 (probably due to process creation costs).
 
-Importing some files (such as .stl geometry) might not work.
-
 Probably some weird output may be produced if color volumes overlap.
 
-In fact, weird behavior may occur at any time! More testing is needed.
+In fact, weird behavior may occur at any time! Hopefully the tests will catch it.
 If it doesn't seem to work for your .scad for any non-obvious reason, let's hear about it.
