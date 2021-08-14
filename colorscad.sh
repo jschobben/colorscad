@@ -33,12 +33,20 @@ while getopts :fhi:j:o:v opt; do
 			exit
 		;;
 		i)
+			if [ -n "$INPUT" ]; then
+				echo "Error: '-i' specified more than once"
+				exit 1
+			fi
 			INPUT="$OPTARG"
 		;;
 		j)
 			PARALLEL_JOB_LIMIT="$OPTARG"
 		;;
 		o)
+			if [ -n "$OUTPUT" ]; then
+				echo "Error: '-o' specified more than once"
+				exit 1
+			fi
 			OUTPUT="$OPTARG"
 		;;
 		v)

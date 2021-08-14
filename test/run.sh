@@ -154,6 +154,8 @@ echo "Testing bad weather:"
 (
 	mkdir ${TEMPDIR}/nasty
 	cd ${TEMPDIR}/nasty
+	${COLORSCAD} -i input -i input | grep -q "Error: '-i' specified more than once"
+	${COLORSCAD} -o output -o output | grep -q "Error: '-o' specified more than once"
 	(
 		function sort { [ "$1" != --version ]; }
 		export -f sort

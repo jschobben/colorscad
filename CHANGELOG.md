@@ -16,6 +16,7 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 ### Added
 
 - Tests, to verify proper behavior
+- Some extra robustness checks
 
 ## [0.4.1] - 2021-07-09
 
