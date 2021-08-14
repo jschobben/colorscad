@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <lib3mf_implicit.hpp>
@@ -10,6 +11,23 @@ float linearToSRGB(float linear)
   }
   const float a = 0.055f;
   return static_cast<float>((1.0 + a) * std::pow(linear, 1/2.4) - a);
+}
+
+// Rotate indices (reorder) such that the smallest one is at index 0, preserving relative order
+void rotate_indices(Lib3MF::sTriangle& triangle)
+{
+  auto& idx = triangle.m_Indices;
+  if ((idx[1] < idx[0]) && (idx[1] < idx[2])) {
+    Lib3MF_uint32 t = idx[0];
+    idx[0] = idx[1];
+    idx[1] = idx[2];
+    idx[2] = t;
+  } else if ((idx[2] < idx[0]) && (idx[2] < idx[1])) {
+    Lib3MF_uint32 t = idx[2];
+    idx[2] = idx[1];
+    idx[1] = idx[0];
+    idx[0] = t;
+  }
 }
 
 // Returns number of skipped input lines
@@ -64,13 +82,34 @@ int mergeModels(char* outputFile)
         if (object->IsMeshObject()) {
           Lib3MF::PMeshObject mesh = model->GetMeshObjectByID(object->GetResourceID());
 
-          // Copy the mesh
+          // Get the mesh
           std::vector<Lib3MF::sPosition> vertices;
-          std::vector<Lib3MF::sTriangle> indices;
+          std::vector<Lib3MF::sTriangle> triangle_indices;
           mesh->GetVertices(vertices);
-          mesh->GetTriangleIndices(indices);
+          mesh->GetTriangleIndices(triangle_indices);
+
+          // Rotate triangle indices, and sort the triangle list
+          // This is to have consistent output, useful for testing purposes
+          for (auto& triangle : triangle_indices) {
+            rotate_indices(triangle);
+          }
+          std::sort(triangle_indices.begin(), triangle_indices.end(),
+            [](Lib3MF::sTriangle a, Lib3MF::sTriangle b) {
+              auto& ai = a.m_Indices;
+              auto& bi = b.m_Indices;
+              if (ai[0] != bi[0]) {
+                return ai[0] < bi[0];
+              }
+              if (ai[1] != bi[1]) {
+                return ai[1] < bi[1];
+              }
+              return ai[2] < bi[2];
+            }
+          );
+
+          // Add the mesh
           Lib3MF::PMeshObject newMesh = mergedModel->AddMeshObject();
-          newMesh->SetGeometry(vertices, indices);
+          newMesh->SetGeometry(vertices, triangle_indices);
 
           // Set color
           if (colorGroupID != -1) { // If we managed to extract a color from the filename
