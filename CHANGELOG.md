@@ -9,6 +9,10 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+### Fixed - 3mfmerge
+
+- Convert colors to sRGB space, as required for 3MF; previously, colors in produced 3MFs were "too dark"
+
 ## [0.4.1] - 2021-07-09
 
 ### Fixed - 3mfmerge

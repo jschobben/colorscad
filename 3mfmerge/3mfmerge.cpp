@@ -1,6 +1,16 @@
+#include <cmath>
 #include <iostream>
 #include <lib3mf_implicit.hpp>
 
+
+float linearToSRGB(float linear)
+{
+  if (linear <= 0.0031308) {
+    return linear * 12.92f;
+  }
+  const float a = 0.055f;
+  return static_cast<float>((1.0 + a) * std::pow(linear, 1/2.4) - a);
+}
 
 // Returns number of skipped input lines
 int mergeModels(char* outputFile)
@@ -30,9 +40,9 @@ int mergeModels(char* outputFile)
       if (cols.size() != 4) {
         std::cerr << "Not coloring '" << line << "': filename doesn't mention exactly 4 RGBA values" << std::endl;
       } else {
-        Lib3MF_single r = cols[0];
-        Lib3MF_single g = cols[1];
-        Lib3MF_single b = cols[2];
+        Lib3MF_single r = linearToSRGB(cols[0]);
+        Lib3MF_single g = linearToSRGB(cols[1]);
+        Lib3MF_single b = linearToSRGB(cols[2]);
         Lib3MF_single a = cols[3];
         Lib3MF::PColorGroup colorGroup = mergedModel->AddColorGroup();
         Lib3MF::sColor color = wrapper->FloatRGBAToColor(r, g, b, a);
