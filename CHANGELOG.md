@@ -9,6 +9,8 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+## [0.4.2] - 2021-08-14
+
 ### Fixed - 3mfmerge
 
 - Convert colors to sRGB space, as required for 3MF; previously, colors in produced 3MFs were "too dark"
@@ -95,7 +97,8 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 - Everything! Only supports creating a colored .amf file.
 
-[Unreleased]: https://github.com/jschobben/colorscad/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/jschobben/colorscad/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/jschobben/colorscad/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/jschobben/colorscad/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/jschobben/colorscad/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/jschobben/colorscad/compare/v0.3.0...v0.3.1
