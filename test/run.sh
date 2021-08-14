@@ -172,8 +172,11 @@ echo "Testing bad weather:"
 	${COLORSCAD} -i color.scad -o existing.amf | grep -q "Output 'existing.amf' already exists"
 	${COLORSCAD} -i color.scad -o wrong.ext | grep -q "the output file's extension must be one of 'amf' or '3mf'"
 	(
-		function which { [ "$1" != openscad ]; }
-		export -f which
+		function command {
+			if [ "$1" = -v ] && [ "$2" = openscad ]; then return 1; fi
+			builtin command "$@"
+		}
+		export -f command
 		${COLORSCAD} -i color.scad -o output.amf | grep -q 'openscad command not found'
 	)
 	(

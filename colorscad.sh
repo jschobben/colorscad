@@ -90,7 +90,7 @@ fi
 
 # Sanity check: on Cygwin, sometimes PATH isn't setup properly and 'sort' starts the Windows version
 if ! sort --version > /dev/null; then
-	echo "Error: your 'sort' command appears to be the wrong one, it is now: $(which sort)"
+	echo "Error: your 'sort' command appears to be the wrong one, it is now: $(command -v sort)"
 	echo "Please fix your PATH, try: export PATH=/usr/bin:\$PATH"
 	exit 1
 fi
@@ -116,7 +116,7 @@ if [ "$FORMAT" != amf ] && [ "$FORMAT" != 3mf ]; then
 	exit 1
 fi
 
-if ! which openscad &> /dev/null; then
+if ! command -v openscad &> /dev/null; then
 	echo "Error: openscad command not found! Make sure it's in your PATH."
 	exit 1
 fi
