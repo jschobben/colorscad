@@ -53,11 +53,9 @@ Preparations
 There is no need to make any ColorSCAD-specific changes to your .scad file(s), however they do need to follow these rules:
 1) All geometry has a color assigned.
    Geometry without a color would end up having *every other* color assigned. The script detects this case though, and refuses to run.
-2) No geometry has multiple colors assigned.
-   Such geometry will not appear at all in the output. The script does not detect this (yet).
-3) Don't use too many colors, or be prepared to have a lot of patience.
+2) Don't use too many colors, or be prepared to have a lot of patience.
    No fancy gradients, please.
-4) Let's avoid weird geometry such as overlapping color volumes...
+3) Let's avoid weird geometry such as overlapping color volumes...
 
 To export a 3MF file, the lib3mf library is needed, and the c++ '3mfmerge' tool using it first needs to be compiled.
 See [3mfmerge/README.md](3mfmerge/README.md).

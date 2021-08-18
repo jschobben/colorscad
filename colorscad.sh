@@ -220,7 +220,7 @@ function render_color {
 		if [ $VERBOSE -ne 1 ]; then
 			EXTRA_ARGS=--quiet
 		fi
-		openscad "$INPUT_CSG" -o "$TEMPFILE" $EXTRA_ARGS -D "module color(c) {if (str(c) == \"${COLOR}\") children();}"
+		openscad "$INPUT_CSG" -o "$TEMPFILE" $EXTRA_ARGS -D "\$colored = false; module color(c) {if (\$colored) {children();} else {\$colored = true; if (str(c) == \"${COLOR}\") children();}}"
 		if [ -s "$TEMPFILE" ]; then
 			mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.${FORMAT}"
 			echo "Finished at ${TEMPDIR}/${COLOR}.${FORMAT}"

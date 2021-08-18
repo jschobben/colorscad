@@ -9,6 +9,10 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+### Added
+
+- Nesting `color()` statements is now supported, and works like in the F5 preview: the outermost color applies.
+
 ## [0.4.2] - 2021-08-14
 
 ### Fixed - 3mfmerge
