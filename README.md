@@ -54,8 +54,9 @@ There is no need to make any ColorSCAD-specific changes to your .scad file(s), h
 1) All geometry has a color assigned.
    Geometry without a color would end up having *every other* color assigned. The script detects this case though, and refuses to run.
 2) Don't use too many colors, or be prepared to have a lot of patience.
-   No fancy gradients, please.
+   No fancy gradients, please. If you must, it's recommended to use Linux or macOS since it runs much faster than on Windows.
 3) Let's avoid weird geometry such as overlapping color volumes...
+   Avoid using multiple colors in an `intersection()` or `difference()`, if unavoidable then just wrap it in a `color()` statement.
 
 To export a 3MF file, the lib3mf library is needed, and the c++ '3mfmerge' tool using it first needs to be compiled.
 See [3mfmerge/README.md](3mfmerge/README.md).
@@ -69,6 +70,8 @@ On older OpenSCAD versions, or on newer versions compiled without 3MF support,
 additional parameters need to be given to make the tests pass.
 If applicable, the test script will alert about this.
 
+Make sure your `3mfmerge` binary is up-to-date before running the tests (see above).
+
 Limitations
 -----------
 
@@ -78,6 +81,7 @@ implementation is too slow to renumber vertices, which is needed for "single obj
 
 Merging .3mf files uses the official library for it,
 although this means having a dependency which is not (yet) commonly available in all Linux distributions.
+It's downloaded locally as part of the `3mfmerge` build, so this should not be a big issue.
 
 When there are a lot of colors, on Windows this script runs much slower than on Linux
 (probably due to process creation costs).
