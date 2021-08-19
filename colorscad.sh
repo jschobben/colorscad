@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# Get this script's directory
+DIR_SCRIPT=$(
+	X=$(command -v "$0")
+	cd "${X%${X##*/}}."
+	pwd
+)
+
 function usage {
 cat <<EOF
 Usage: $0 -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]
@@ -63,9 +70,6 @@ shift $(($OPTIND-1))
 OPENSCAD_EXTRA=("$@")
 
 if [ "$(uname)" = Darwin ]; then
-	# Add GNU coreutils to the path for macOS users (`brew install coreutils`).
-	PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
-
 	# BSD sed, as used on macOS, uses a different parameter than GNU sed to enable line-buffered mode
 	function sed_u {
 		sed -l "$@"
@@ -130,22 +134,34 @@ if [ "$FORMAT" = 3mf ]; then
 		# Not treating this as a fatal error, because '--info' sometimes fails and cause a false alarm.
 	fi
 
-	DIR_3MFMERGE=$(readlink -f ${0%/*})/3mfmerge
-	if ! [ -x ${DIR_3MFMERGE}/bin/3mfmerge ] && ! [ -x ${DIR_3MFMERGE}/bin/3mfmerge.exe ]; then
+	DIR_3MFMERGE=${DIR_SCRIPT}/3mfmerge
+	if ! [ -x "${DIR_3MFMERGE}/bin/3mfmerge" ] && ! [ -x "${DIR_3MFMERGE}/bin/3mfmerge.exe" ]; then
 		echo "3MF output depends on a binary tool, that needs to be compiled first."
 		echo "Please see '3mfmerge/README.md' in the colorscad git repo (i.e. '${DIR_3MFMERGE}/')."
 		exit 1
 	fi
 fi
 
-# Convert input to a .csg file, mainly to resolve named colors. Also to evaluate functions etc. only once.
-# Put .csg file in current directory, to be cygwin-friendly (Windows openscad doesn't know about /tmp/).
-INPUT_CSG=$(mktemp --tmpdir=. --suffix=.csg)
-openscad "$INPUT" -o "$INPUT_CSG" "${OPENSCAD_EXTRA[@]}"
+# Create a temporary, unique .csg file in the current directory.
+# It needs to be in the current directory, because it might contain relative "import" statements.
+# On macOS, 'mktemp' cannot create a file with a given extension in the current directory, so use a workaround.
+INPUT_CSG=$(
+	set -o noclobber
+	NAME=
+	until > "$NAME"; do
+		NAME=tmp.$$_${RANDOM}.csg
+	done 2>/dev/null
+	echo "$NAME"
+)
+[ -z "$INPUT_CSG" ] && exit
+# Working directory. Use a dir relative to the current dir, because openscad might not have access to
+# the default temp dir; on i.e. Ubuntu, openscad can be a snap package which doesn't have access to /tmp/
+TEMPDIR=$(mktemp -d ./tmp.XXXXXX)
+# Cleanup trigger
+trap "rm -Rf '$(pwd)/${INPUT_CSG}' '$(pwd)/${TEMPDIR}'" EXIT
 
-# Working directory, plus cleanup trigger
-TEMPDIR=$(mktemp -d)
-trap "rm -Rf '$INPUT_CSG' '$TEMPDIR'" EXIT
+# Convert input to a .csg file, mainly to resolve named colors. Also to evaluate functions etc. only once.
+openscad "$INPUT" -o "$INPUT_CSG" "${OPENSCAD_EXTRA[@]}"
 
 if ! [ -s "$INPUT_CSG" ]; then
 	echo "Error: the produced .csg is empty. Looks like something went wrong..."
@@ -159,9 +175,8 @@ echo "Get list of used colors"
 # Colors are sorted on decreasing number of occurrences. The sorting is to gamble that more color mentions,
 # means more geometry; we want to start the biggest jobs first to improve parallelism.
 COLOR_ID_TAG="colorid_$$_${RANDOM}"
-TEMPFILE=$(mktemp --tmpdir=. --suffix=.stl)
 COLORS=$(
-	openscad "$INPUT_CSG" -o "$TEMPFILE" -D "module color(c) {echo(${COLOR_ID_TAG}=str(c));}" 2>&1 |
+	openscad "$INPUT_CSG" -o "${TEMPDIR}/no_color.stl" -D "module color(c) {echo(${COLOR_ID_TAG}=str(c));}" 2>&1 |
 	tr -d '\r"' |
 	sed -n "s/^ECHO: ${COLOR_ID_TAG} = // p" |
 	sort |
@@ -169,7 +184,6 @@ COLORS=$(
 	sort -rn |
 	sed 's/^[^\[]*//'
 )
-mv "$TEMPFILE" "${TEMPDIR}/no_color.stl"
 
 # If "no_color.stl" contains anything, it's considered a fatal error:
 # any geometry that doesn't have a color assigned, would end up in all per-color AMF files
@@ -195,7 +209,7 @@ if [ -z "$COLORS" ]; then
 	echo "Error: no colors were found at all. Looks like something went wrong..."
 	exit 1
 fi
-COLOR_COUNT=$(echo "$COLORS" | wc -l)
+let COLOR_COUNT="$(echo "$COLORS" | wc -l)"
 echo "${COLOR_COUNT} unique colors were found."
 if [ $VERBOSE -eq 1 ]; then
 	echo
@@ -213,20 +227,18 @@ function render_color {
 	local COLOR=$1
 
 	{
-		# To support Windows/cygwin, render to temp file in input directory and later move it to TEMPDIR.
-		TEMPFILE=$(mktemp --tmpdir=. --suffix=.${FORMAT})
+		local OUT_FILE="${TEMPDIR}/${COLOR}.${FORMAT}"
 		echo "Starting"
 		local EXTRA_ARGS=
 		if [ $VERBOSE -ne 1 ]; then
 			EXTRA_ARGS=--quiet
 		fi
-		openscad "$INPUT_CSG" -o "$TEMPFILE" $EXTRA_ARGS -D "\$colored = false; module color(c) {if (\$colored) {children();} else {\$colored = true; if (str(c) == \"${COLOR}\") children();}}"
-		if [ -s "$TEMPFILE" ]; then
-			mv "$TEMPFILE" "${TEMPDIR}/${COLOR}.${FORMAT}"
-			echo "Finished at ${TEMPDIR}/${COLOR}.${FORMAT}"
+		openscad "$INPUT_CSG" -o "$OUT_FILE" $EXTRA_ARGS -D "\$colored = false; module color(c) {if (\$colored) {children();} else {\$colored = true; if (str(c) == \"${COLOR}\") children();}}"
+		if [ -s "$OUT_FILE" ]; then
+			echo "Finished at ${OUT_FILE}"
 		else
 			echo "Warning: output is empty, removing it!"
-			rm "$TEMPFILE"
+			rm "$OUT_FILE"
 		fi
 	} 2>&1 | sed_u "s/^/${COLOR} /"
 }
@@ -270,8 +282,9 @@ if [ "$FORMAT" = amf ]; then
 		for COLOR in $COLORS; do
 			if grep -q -m 1 object "${TEMPDIR}/${COLOR}.amf"; then
 				echo " <object id=\"${id}\">"
-				# Crudely skip the AMF header/footer; assume there is exactly one "<object>" tag and keep only its contents
-				cat "${TEMPDIR}/${COLOR}.amf" | tail -n +5 | head -n -1 | sed "s/<volume>/<volume materialid=\"${id}\">/"
+				# Crudely skip the AMF header/footer; assume there is exactly one "<object>" tag and keep only its contents.
+				# At the same time, set the volume's material ID, and output the result.
+				sed "1,4 d; \$ d; s/<volume>/<volume materialid=\"${id}\">/" "${TEMPDIR}/${COLOR}.amf"
 			else
 				echo "Skipping ${COLOR}!" >&2
 				let SKIPPED++

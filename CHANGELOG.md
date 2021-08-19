@@ -9,6 +9,10 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+### Fixed
+
+- Remove dependency on GNU coreutils on macOS; now OpenSCAD is the only dependency, no more need to brew
+
 ## [0.5.0] - 2021-08-19
 
 ### Added
