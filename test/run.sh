@@ -25,11 +25,16 @@ for ARG in "$@"; do
 done
 
 
+# Same as 'grep -q', without triggering broken pipe errors due to early exit
+function grep_q {
+	grep "$@" > /dev/null
+}
+
 # If a test fails, check if it's due to the used openscad version; if so, suggest workarounds.
 function fail_tips {
 	trap - ERR  # Prevent recursion
 	if [ $SKIP_3MF -eq 0 ]; then
-		if ! openscad --info 2>&1 | grep '^lib3mf version: ' | grep -qv 'not enabled'; then
+		if ! openscad --info 2>&1 | grep '^lib3mf version: ' | grep_q -v 'not enabled'; then
 			echo "Warning: all the 3MF tests will fail if your openscad version does not have 3mf support."
 			echo "To skip those tests, use: $0 skip3mf"
 			echo
@@ -155,44 +160,44 @@ echo "Testing bad weather:"
 (
 	mkdir "${TEMPDIR}"/nasty
 	cd "${TEMPDIR}"/nasty
-	${COLORSCAD} -i input -i input | grep -q "Error: '-i' specified more than once"
-	${COLORSCAD} -o output -o output | grep -q "Error: '-o' specified more than once"
+	${COLORSCAD} -i input -i input | grep_q "Error: '-i' specified more than once"
+	${COLORSCAD} -o output -o output | grep_q "Error: '-o' specified more than once"
 	(
 		function sort { [ "$1" != --version ]; }
 		export -f sort
-		${COLORSCAD} | grep -q "your 'sort' command appears to be the wrong one"
+		${COLORSCAD} | grep_q "your 'sort' command appears to be the wrong one"
 	)
-	${COLORSCAD} | grep -q 'You must provide both'
+	${COLORSCAD} | grep_q 'You must provide both'
 	echo 'color("red") cube();' > color.scad
-	${COLORSCAD} -i color.scad | grep -q 'You must provide both'
-	${COLORSCAD} -o output.amf | grep -q 'You must provide both'
-	${COLORSCAD} -i missing.scad -o output.amf | grep -q "Input 'missing.scad' does not exist"
+	${COLORSCAD} -i color.scad | grep_q 'You must provide both'
+	${COLORSCAD} -o output.amf | grep_q 'You must provide both'
+	${COLORSCAD} -i missing.scad -o output.amf | grep_q "Input 'missing.scad' does not exist"
 	echo 'cube();' > no_color.scad
-	${COLORSCAD} -i no_color.scad -o output.amf | grep -q 'some geometry is not wrapped'
+	${COLORSCAD} -i no_color.scad -o output.amf | grep_q 'some geometry is not wrapped'
 	touch existing.amf
-	${COLORSCAD} -i color.scad -o existing.amf | grep -q "Output 'existing.amf' already exists"
-	${COLORSCAD} -i color.scad -o wrong.ext | grep -q "the output file's extension must be one of 'amf' or '3mf'"
+	${COLORSCAD} -i color.scad -o existing.amf | grep_q "Output 'existing.amf' already exists"
+	${COLORSCAD} -i color.scad -o wrong.ext | grep_q "the output file's extension must be one of 'amf' or '3mf'"
 	(
 		function command {
 			if [ "$1" = -v ] && [ "$2" = openscad ]; then return 1; fi
 			builtin command "$@"
 		}
 		export -f command
-		${COLORSCAD} -i color.scad -o output.amf | grep -q 'openscad command not found'
+		${COLORSCAD} -i color.scad -o output.amf | grep_q 'openscad command not found'
 	)
 	(
 		trap 'echo "Failure on line $LINENO"; exit 1' ERR
 		# If 'openscad --info' does not list 3mf support, it's a warning (followed by an abort due to this mock not producing output)
 		function openscad { :; }
 		export -f openscad
-		${COLORSCAD} -i color.scad -o output.3mf | grep -q 'Warning: your openscad version does not seem to have 3MF support'
+		${COLORSCAD} -i color.scad -o output.3mf | grep_q 'Warning: your openscad version does not seem to have 3MF support'
 		function openscad { echo "lib3mf version: (not enabled)"; }
-		${COLORSCAD} -i color.scad -o output.3mf | grep -q 'Warning: your openscad version does not seem to have 3MF support'
+		${COLORSCAD} -i color.scad -o output.3mf | grep_q 'Warning: your openscad version does not seem to have 3MF support'
 	)
 	echo 'cheese' > syntax_error.scad
-	${COLORSCAD} -i syntax_error.scad -o output.amf 2>&1 | grep -q "the produced file 'tmp\..*\.csg' is empty"
+	${COLORSCAD} -i syntax_error.scad -o output.amf 2>&1 | grep_q "the produced file 'tmp\..*\.csg' is empty"
 	echo '' > empty.scad
-	${COLORSCAD} -i empty.scad -o output.amf | grep -q 'no colors were found at all'
+	${COLORSCAD} -i empty.scad -o output.amf | grep_q 'no colors were found at all'
 )
 echo "Bad weather tests all passed."
 
