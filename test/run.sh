@@ -9,7 +9,8 @@ COLORSCAD=$(pwd)/../colorscad.sh
 
 # Use a temp dir relative to this script's dir, because openscad might not have access to the default
 # temp dir; on i.e. Ubuntu, openscad can be a snap package which doesn't have access to /tmp/
-TEMPDIR=$(mktemp -d $(pwd)/tmp.XXXXXX)
+TEMPDIR_REL=$(mktemp -d ./tmp.XXXXXX)
+TEMPDIR="$(pwd)/${TEMPDIR_REL}"
 trap "rm -Rf '$TEMPDIR'" EXIT
 
 SKIP_3MF=0
@@ -203,14 +204,29 @@ echo "Bad weather tests all passed."
 
 
 # Nice weather tests: check that the produced output matches the reference output
-for x in test_*.scad; do
+
+# Copy two tests to a nested dir, to check if colorscad can handle that
+mkdir "${TEMPDIR}"/test_subdir
+for x in test_color_args.scad test_import.scad; do
+	sed -E 's#(use <|import\(")#\1../../#g' < $x > "${TEMPDIR}"/test_subdir/$x
+done
+
+# Run the tests
+for x in test_*.scad "${TEMPDIR_REL}"/test_subdir/*.scad; do
 	NAME=${x%.scad}
-	EXPECTATION=${NAME}
+	EXPECTATION=${NAME##*/}
 	if [ "$NAME" = test_boolean ] && [ $OLD_BOOLEAN -ne 0 ]; then
 		EXPECTATION+='.2019.05'
 	fi
 	test_render ${NAME}.scad expectations/${EXPECTATION}.3mf
 	test_render ${NAME}.scad expectations/${EXPECTATION}.amf
+done
+
+# Finally, rerun two tests with a different current directory
+cd "$TEMPDIR"
+for NAME in test_color_args test_import; do
+	test_render ../${NAME}.scad ../expectations/${NAME}.3mf
+	test_render ../${NAME}.scad ../expectations/${NAME}.amf
 done
 
 

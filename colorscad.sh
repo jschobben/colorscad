@@ -142,9 +142,20 @@ if [ "$FORMAT" = 3mf ]; then
 	fi
 fi
 
-# Create a temporary, unique .csg file in the current directory.
-# It needs to be in the current directory, because it might contain relative "import" statements.
-# On macOS, 'mktemp' cannot create a file with a given extension in the current directory, so use a workaround.
+# Convert OUTPUT to a full path, because we're going to change current directory (see below)
+OUTPUT=$(cd "${OUTPUT%${OUTPUT##*/}}."; pwd)/${OUTPUT##*/}
+
+# Change the current dir to the input's dir, for consistent behavior.
+# That is because not all OpenSCAD versions behave the same when the input is not in the current dir;
+# in some versions 'import()' is relative to the current dir instead of the input's dir, and in
+# other versions .csg output is written relative to the input's dir, instead of the current dir.
+ORIGINAL_PWD=$(pwd)
+cd "${INPUT%${INPUT##*/}}."
+INPUT=${INPUT##*/}
+
+# Create a temporary, unique .csg file in the input's directory.
+# It needs to be in the input's directory, because it might contain relative "import" statements.
+# On macOS, 'mktemp' cannot create a file with a given extension, so use a workaround.
 INPUT_CSG=$(
 	set -o noclobber
 	NAME=
@@ -154,7 +165,7 @@ INPUT_CSG=$(
 	echo "$NAME"
 )
 [ -z "$INPUT_CSG" ] && exit
-# Working directory. Use a dir relative to the current dir, because openscad might not have access to
+# Working directory. Use a dir relative to the input dir, because openscad might not have access to
 # the default temp dir; on i.e. Ubuntu, openscad can be a snap package which doesn't have access to /tmp/
 TEMPDIR=$(mktemp -d ./tmp.XXXXXX)
 # Cleanup trigger
@@ -197,7 +208,7 @@ if [ -s "${TEMPDIR}/no_color.stl" ]; then
 		[ "$PARAM" = --hardwarnings ] && continue
 		printf ' %q' "$PARAM"
 	done
-	echo -n " '$INPUT' -o output.csg -D 'module color(c,alpha=1){}"
+	echo -n " '$(pwd)/${INPUT}' -o output.csg -D 'module color(c,alpha=1){}"
 	for primitive in cube sphere cylinder polyhedron; do
 		echo -n " module ${primitive}(){assert(false);}"
 	done
@@ -295,8 +306,8 @@ if [ "$FORMAT" = amf ]; then
 		echo '</amf>'
 	} > "$OUTPUT"
 
-	# Strip current dir prefix, if present, to make message smaller
-	OUT=${OUTPUT#$(pwd)/}
+	# Strip original current dir prefix, if present, to make message smaller
+	OUT=${OUTPUT#${ORIGINAL_PWD}/}
 	echo
 	echo "To create a compressed AMF, run:"
 	echo "  zip '${OUT}.zip' '$OUT' && mv '${OUT}.zip' '${OUT}'"
