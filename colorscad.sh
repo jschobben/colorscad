@@ -164,7 +164,7 @@ trap "rm -Rf '$(pwd)/${INPUT_CSG}' '$(pwd)/${TEMPDIR}'" EXIT
 openscad "$INPUT" -o "$INPUT_CSG" "${OPENSCAD_EXTRA[@]}"
 
 if ! [ -s "$INPUT_CSG" ]; then
-	echo "Error: the produced .csg is empty. Looks like something went wrong..."
+	echo "Error: the produced file '$INPUT_CSG' is empty. Looks like something went wrong..."
 	exit 1
 fi
 
@@ -290,14 +290,16 @@ if [ "$FORMAT" = amf ]; then
 				let SKIPPED++
 			fi
 			let id++
-			echo -ne "\r${id}/${COLOR_COUNT} " >&2
+			echo -ne "\r  ${id}/${COLOR_COUNT} " >&2
 		done
 		echo '</amf>'
 	} > "$OUTPUT"
 
+	# Strip current dir prefix, if present, to make message smaller
+	OUT=${OUTPUT#$(pwd)/}
 	echo
 	echo "To create a compressed AMF, run:"
-	echo "  zip '${OUTPUT}.zip' '$OUTPUT' && mv '${OUTPUT}.zip' '${OUTPUT}'"
+	echo "  zip '${OUT}.zip' '$OUT' && mv '${OUT}.zip' '${OUT}'"
 	echo "But, be aware that some tools may not support compressed AMF files."
 
 	if [ "$SKIPPED" -gt 0 ]; then

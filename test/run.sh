@@ -3,7 +3,7 @@ set -o errexit -o errtrace
 
 # cd to this script's directory
 X=$(command -v "$0")
-cd ${X%${X##*/}}.
+cd "${X%${X##*/}}."
 
 COLORSCAD=$(pwd)/../colorscad.sh
 
@@ -27,6 +27,7 @@ done
 
 # If a test fails, check if it's due to the used openscad version; if so, suggest workarounds.
 function fail_tips {
+	trap - ERR  # Prevent recursion
 	if [ $SKIP_3MF -eq 0 ]; then
 		if ! openscad --info 2>&1 | grep '^lib3mf version: ' | grep -qv 'not enabled'; then
 			echo "Warning: all the 3MF tests will fail if your openscad version does not have 3mf support."
@@ -39,7 +40,7 @@ function fail_tips {
 			cd "$TEMPDIR"
 			echo 'module empty(){}; intersection() {empty(); cube();}' > intersect.scad
 			# <=2019.05 ignores the "empty" module, producing output; newer versions treat it as an empty volume.
-			openscad --quiet intersect.scad -o intersect.stl
+			openscad --quiet intersect.scad -o intersect.stl || true
 			if [ -s intersect.stl ]; then
 				echo "Warning: your openscad version uses 'old' boolean semantics."
 				echo "To properly test on this version, use: $0 old_boolean"
@@ -49,7 +50,7 @@ function fail_tips {
 		)
 	fi
 }
-trap 'echo "Failure on line $LINENO" >&2; fail_tips >&2' ERR
+trap 'echo "Failure at $0:$LINENO" >&2; fail_tips >&2' ERR
 
 
 # Prepare given 3MF for comparison: strip UUIDs, and remove the "xmlns" attribute that not all versions add.
@@ -152,8 +153,8 @@ fi
 # Nasty weather tests: check that the sanity checks catch all error conditions
 echo "Testing bad weather:"
 (
-	mkdir ${TEMPDIR}/nasty
-	cd ${TEMPDIR}/nasty
+	mkdir "${TEMPDIR}"/nasty
+	cd "${TEMPDIR}"/nasty
 	${COLORSCAD} -i input -i input | grep -q "Error: '-i' specified more than once"
 	${COLORSCAD} -o output -o output | grep -q "Error: '-o' specified more than once"
 	(
@@ -189,7 +190,7 @@ echo "Testing bad weather:"
 		${COLORSCAD} -i color.scad -o output.3mf | grep -q 'Warning: your openscad version does not seem to have 3MF support'
 	)
 	echo 'cheese' > syntax_error.scad
-	${COLORSCAD} -i syntax_error.scad -o output.amf 2>&1 | grep -q 'the produced .csg is empty'
+	${COLORSCAD} -i syntax_error.scad -o output.amf 2>&1 | grep -q "the produced file 'tmp\..*\.csg' is empty"
 	echo '' > empty.scad
 	${COLORSCAD} -i empty.scad -o output.amf | grep -q 'no colors were found at all'
 )
