@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -o errexit -o errtrace
+set -o errexit -o errtrace -o nounset
 
 # cd to this script's directory
 X=$(command -v "$0")
@@ -11,7 +11,7 @@ COLORSCAD=$(pwd)/../colorscad.sh
 # temp dir; on i.e. Ubuntu, openscad can be a snap package which doesn't have access to /tmp/
 TEMPDIR_REL=$(mktemp -d ./tmp.XXXXXX)
 TEMPDIR="$(pwd)/${TEMPDIR_REL}"
-trap "rm -Rf '$TEMPDIR'" EXIT
+trap "openscad --info 2>&1 | grep '^OpenSCAD Version: '; rm -Rf '$TEMPDIR'" EXIT
 
 SKIP_3MF=0
 OLD_BOOLEAN=0
