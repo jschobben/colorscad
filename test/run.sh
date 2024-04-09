@@ -132,7 +132,7 @@ function test_render {
 	# Generate output
 	local OUTPUT="${TEMPDIR}/output.${FORMAT}"
 	rm -f "$OUTPUT"
-	# OpenSCAD >= 2024.01.26 requires enabling "predictible-output" to get the same behavior as older versions
+	# OpenSCAD >= 2024.01.26 with lib3mf v2 requires enabling "predictible-output" to get the same behavior as older versions
 	if openscad --help 2>&1 | grep -q predictible-output; then
 		function openscad { command openscad --enable=predictible-output "$@"; }; export -f openscad
 	fi
