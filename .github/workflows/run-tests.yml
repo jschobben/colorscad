@@ -1,0 +1,192 @@
+name: ColorSCAD tests
+
+on:
+  workflow_dispatch:
+  pull_request:
+  schedule:
+    - cron: '42 2 * * *'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows 2015.03
+            runner: windows-latest
+            uri: https://files.openscad.org/OpenSCAD-2015.03-2-x86-64.zip
+            test-params: skip3mf old_boolean
+          - name: MacOS 2015.03
+            runner: macos-latest
+            uri: https://files.openscad.org/OpenSCAD-2015.03-3.dmg
+            test-params: skip3mf old_boolean
+
+          - name: Ubuntu 2019.05
+            runner: ubuntu-20.04
+            apt: openscad=2019.05-3ubuntu5
+            test-params: old_boolean
+          - name: Windows 2019.05
+            runner: windows-latest
+            uri: https://files.openscad.org/OpenSCAD-2019.05-x86-64.zip
+            test-params: old_boolean
+          - name: AppImage 2019.05
+            runner: ubuntu-latest
+            uri: https://files.openscad.org/OpenSCAD-2019.05-x86_64.AppImage
+            test-params: old_boolean
+          - name: MacOS 2019.05
+            runner: macos-latest
+            uri: https://files.openscad.org/OpenSCAD-2019.05.dmg
+            test-params: old_boolean
+
+          - name: Ubuntu 2021.01
+            runner: ubuntu-22.04
+            apt: openscad=2021.01-4build1
+          - name: Windows 2021.01
+            runner: windows-latest
+            uri: https://files.openscad.org/OpenSCAD-2021.01-x86-64.zip
+          - name: AppImage 2021.01
+            runner: ubuntu-latest
+            uri: https://files.openscad.org/OpenSCAD-2021.01-x86_64.AppImage
+          - name: MacOS 2021.01
+            runner: macos-latest
+            uri: https://files.openscad.org/OpenSCAD-2021.01.dmg
+
+          - name: Ubuntu nightly
+            runner: ubuntu-latest
+            apt-key: https://files.openscad.org/OBS-Repository-Key.pub
+            apt-repo: https://download.opensuse.org/repositories/home:/t-paul/xUbuntu_22.04/
+            apt: openscad-nightly
+          - name: AppImage nightly
+            runner: ubuntu-latest
+            uri: https://files.openscad.org/snapshots/.snapshot_linux_x86_64.js
+          - name: MacOS nightly
+            runner: macos-latest
+            uri: https://files.openscad.org/snapshots/.snapshot_macos.js
+          - name: Windows nightly
+            runner: windows-latest
+            uri: https://files.openscad.org/snapshots/.snapshot_win64.js
+
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      URI: ${{ matrix.uri }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Make runner image version accessible
+        run: echo "ImageVersion=${ImageVersion}" >> $GITHUB_ENV
+
+      - name: Resolve nightly URI
+        if: endsWith(env.URI, '.js')
+        run: |
+          URI=$(curl --silent "$URI" | awk -F " *[(,)'] *" '/^setSnapshotFileInfo\(/ && !/_INSTALLER/ {print $12}')
+          echo "URI=${URI}" | tee -a "$GITHUB_ENV"
+
+      - name: Install OpenSCAD (apt)
+        if: matrix.apt
+        run: |
+          if [[ -n '${{ matrix.apt-repo }}' ]]; then
+            sudo curl ${{ matrix.apt-key }} -o /etc/apt/trusted.gpg.d/obs-openscad-nightly.asc
+            echo 'deb ${{ matrix.apt-repo }} ./' | sudo tee /etc/apt/sources.list.d/openscad.list
+            sudo apt update
+          fi
+          sudo apt install '${{ matrix.apt }}'
+          which openscad || sudo ln -s "$(which openscad-nightly)" /usr/local/bin/openscad
+
+      - name: Install OpenSCAD (AppImage)
+        if: endsWith(env.URI, '.AppImage')
+        run: |
+          sudo apt install fuse libopengl0 libegl1
+          sudo aria2c "${URI}" -d /usr/local/bin -o openscad
+          sudo chmod +x /usr/local/bin/openscad
+
+      - name: Install OpenSCAD (dmg)
+        if: endsWith(env.URI, '.dmg')
+        run: |
+          aria2c "${URI}" -o openscad.dmg
+          hdiutil attach openscad.dmg
+          echo /Volumes/OpenSCAD/OpenSCAD.app/Contents/MacOS >> "$GITHUB_PATH"
+        working-directory: ${{ runner.temp }}
+
+      - name: Install OpenSCAD (zip)
+        if: endsWith(env.URI, '.zip')
+        run: |
+          set -x
+          aria2c "${URI}" -o openscad.zip
+          7z x openscad.zip
+          EXE=$(echo ${PWD}/*/openscad.exe)
+          echo "${EXE%/openscad.exe}" | tee -a "$GITHUB_PATH"
+        working-directory: ${{ runner.temp }}
+
+      - name: Setup Windows OpenGL
+        uses: ssciwr/setup-mesa-dist-win@6657792673a5d162d5f244db991ba45b4b68989f  # v2
+        if: contains(matrix.runner, 'windows')
+
+      - name: OpenSCAD --info
+        run: |
+          if which xvfb-run > /dev/null 2>&1; then
+            # For Linux, run virtual X server, so OpenSCAD can get OpenGL context
+            xvfb-run openscad --info
+          else
+            openscad --info
+          fi
+
+      - name: OpenSCAD nightly age check
+        if: contains(matrix.name, 'nightly')
+        run: |
+          V=$(openscad --version 2>&1 | sed -n 's/^OpenSCAD version // p')
+          IFS=. read Y M D x <<<"$V"
+          if [[ "$RUNNER_OS" = macOS ]]; then
+            dt() { F=$1; shift; date -j -f "$F" "$@"; }
+          else
+            dt() { shift; date -d "$@"; }
+          fi
+          BUILD_DATE=$(dt '%F %T' "${Y}-${M}-${D:-01} 00:00:00" +%s)
+          dt @%s @${BUILD_DATE}
+          let AGE="($(date +%s)-${BUILD_DATE})/3600/24" || true
+          echo "Build age: ${AGE} days"
+          [[ "$AGE" -lt 30 ]]
+
+      - name: Cache 3mfmerge
+        uses: actions/cache@v4
+        with:
+          path: 3mfmerge/bin
+          key: test-${{ matrix.runner }}-${{ runner.arch }}-${{ env.ImageVersion }}-3mfmerge-${{ hashFiles('3mfmerge/*') }}
+
+      # This step takes most of the time as it includes lib3mf build, hence the caching.
+      - name: Build 3mfmerge
+        run: |
+          if bin/3mfmerge /dev/null < /dev/null; then
+            echo "3mfmerge seems to be in order, skipping build"
+            exit
+          elif [[ -f bin/3mfmerge ]]; then
+            echo "::error::Cached bin/3mfmerge is troublesome, failing the job so it can be investigated"
+            exit 1
+          fi
+          mkdir build
+          cd build
+          cmake .. -DLIB3MF_TESTS=OFF
+          cmake --build . --parallel
+        working-directory: 3mfmerge
+
+      - name: Run tests
+        run: |
+          ./run.sh ${{ matrix.test-params }}
+        working-directory: test
+
+  # Collect results, to be used as combined status check for PRs
+  all-succeeded:
+    name: All tests passed
+    needs: run-tests
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "::error::Some tests failed or were cancelled"
+          exit 1
