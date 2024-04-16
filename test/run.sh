@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -o errexit -o errtrace
+set -o errexit -o errtrace -o nounset
 
 # cd to this script's directory
 X=$(command -v "$0")
@@ -11,7 +11,7 @@ COLORSCAD=$(pwd)/../colorscad.sh
 # temp dir; on i.e. Ubuntu, openscad can be a snap package which doesn't have access to /tmp/
 TEMPDIR_REL=$(mktemp -d ./tmp.XXXXXX)
 TEMPDIR="$(pwd)/${TEMPDIR_REL}"
-trap "rm -Rf '$TEMPDIR'" EXIT
+trap "openscad --info 2>&1 | grep '^OpenSCAD Version: '; rm -Rf '$TEMPDIR'" EXIT
 
 SKIP_3MF=0
 OLD_BOOLEAN=0
@@ -54,6 +54,10 @@ function fail_tips {
 			fi
 			rm intersect.*
 		)
+	fi
+	if ! openscad --help 2>&1 | grep -q -- '--input'; then
+		# On newer builds, 'predictible-output' must be enabled to get the same behavior as older ones
+		echo "For OpenSCAD >= 2024.01.26, only a build with experimental features enabled will work."
 	fi
 }
 trap 'echo "Failure at $0:$LINENO" >&2; fail_tips >&2' ERR
@@ -128,7 +132,12 @@ function test_render {
 	# Generate output
 	local OUTPUT="${TEMPDIR}/output.${FORMAT}"
 	rm -f "$OUTPUT"
+	# OpenSCAD >= 2024.01.26 with lib3mf v2 requires enabling "predictible-output" to get the same behavior as older versions
+	if openscad --help 2>&1 | grep -q predictible-output; then
+		function openscad { command openscad --enable=predictible-output "$@"; }; export -f openscad
+	fi
 	${COLORSCAD} -i "$INPUT" -o "$OUTPUT" -j 4 > >(sed 's/^/  /') 2>&1
+	unset openscad
 
 	# Canonicalize the expectation and output, so they can be compared
 	rm -Rf "${TEMPDIR}/exp" "${TEMPDIR}/out"

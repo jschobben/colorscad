@@ -9,6 +9,14 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+### Added
+
+- CI workflow to run tests on OpenSCAD 2015.03/2019.05/2021.01/nightly, for Ubuntu apt/AppImage/MacOS/Windows.
+
+### Fixed - tests
+
+- Use parameter --enable=predictible-output if available, to fix tests on OpenSCAD >= 2024.01.26 with lib3mf v2.
+
 ## [0.5.1] - 2021-08-22
 
 ### Fixed
