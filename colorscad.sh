@@ -158,8 +158,8 @@ INPUT=${INPUT##*/}
 # On macOS, 'mktemp' cannot create a file with a given extension, so use a workaround.
 INPUT_CSG=$(
 	set -o noclobber
-	NAME=
-	until > "$NAME"; do
+	NAME=tmp.$$_${RANDOM}.csg
+	while [ -f "$NAME" ]; do
 		NAME=tmp.$$_${RANDOM}.csg
 	done 2>/dev/null
 	echo "$NAME"
@@ -282,11 +282,7 @@ if [ "$FORMAT" = amf ]; then
 		id=0
 		IFS=$'\n'
 		for COLOR in $COLORS; do
-			IFS=','; set -- $COLOR
-			R=${1#[}
-			G=$2
-			B=$3
-			A=${4%]}
+			IFS=, read -r R G B A <<<"${COLOR//[\[\] ]/}"
 			echo " <material id=\"${id}\"><color><r>${R// }</r><g>${G// }</g><b>${B// }</b><a>${A// }</a></color></material>"
 			(( id++ ))
 		done
@@ -323,8 +319,9 @@ elif [ "$FORMAT" = 3mf ]; then
 	# Run from inside TEMPDIR, to support having a Windows-format 3mfmerge binary
 	(
 		cd "$TEMPDIR" || exit 1
+		# shellcheck disable=SC2001
 		"${DIR_3MFMERGE}"/bin/3mfmerge merged.3mf < \
-				<(echo "$COLORS" | sed "s/\$/\.${FORMAT}/")
+		  <(echo "$COLORS" | sed "s/\$/\.${FORMAT}/")
 	)
 	MERGE_STATUS=$?
 	if ! [ -s "${TEMPDIR}"/merged.3mf ]; then
