@@ -179,10 +179,23 @@ jobs:
           ./run.sh ${{ matrix.test-params }}
         working-directory: test
 
+  code-quality:
+    name: Check code quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: shellcheck colorscad.sh
+        run: |
+          shellcheck colorscad.sh
+      # TODO check tests, 3mfmerge
+
   # Collect results, to be used as combined status check for PRs
   all-succeeded:
     name: All tests passed
-    needs: run-tests
+    needs:
+      - run-tests
+      - code-quality
     if: always()
     runs-on: ubuntu-latest
     steps:
