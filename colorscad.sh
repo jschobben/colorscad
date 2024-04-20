@@ -283,7 +283,7 @@ if [ "$FORMAT" = amf ]; then
 		IFS=$'\n'
 		for COLOR in $COLORS; do
 			IFS=, read -r R G B A <<<"${COLOR//[\[\] ]/}"
-			echo " <material id=\"${id}\"><color><r>${R// }</r><g>${G// }</g><b>${B// }</b><a>${A// }</a></color></material>"
+			echo " <material id=\"${id}\"><color><r>${R}</r><g>${G}</g><b>${B}</b><a>${A}</a></color></material>"
 			(( id++ ))
 		done
 		id=0
