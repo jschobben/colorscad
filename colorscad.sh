@@ -155,14 +155,9 @@ INPUT=${INPUT##*/}
 
 # Create a temporary, unique .csg file in the input's directory.
 # It needs to be in the input's directory, because it might contain relative "import" statements.
-# On macOS, 'mktemp' cannot create a file with a given extension, so use a workaround.
+# On macOS, 'mktemp' does not expand the XXXs because there's a .csg suffix, so use a workaround.
 INPUT_CSG=$(
-	set -o noclobber
-	NAME=tmp.$$_${RANDOM}.csg
-	while [ -f "$NAME" ]; do
-		NAME=tmp.$$_${RANDOM}.csg
-	done 2>/dev/null
-	echo "$NAME"
+	until mktemp "tmp.$$_${RANDOM}_XXXXXX.csg"; do sleep 1; done
 )
 [ -z "$INPUT_CSG" ] && exit
 # Working directory. Use a dir relative to the input dir, because openscad might not have access to
