@@ -305,7 +305,7 @@ if [ "$FORMAT" = amf ]; then
 	} > "$OUTPUT"
 
 	# Strip original current dir prefix, if present, to make message smaller
-	OUT="${OUTPUT#"${ORIGINAL_PWD}"/}"
+	OUT=${OUTPUT#"${ORIGINAL_PWD}"/}
 	echo
 	echo "To create a compressed AMF, run:"
 	echo "  zip '${OUT}.zip' '$OUT' && mv '${OUT}.zip' '${OUT}'"
