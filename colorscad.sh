@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
 # Get this script's directory
-DIR_SCRIPT=$(
+DIR_SCRIPT="$(
 	X=$(command -v "$0")
-	cd "${X%${X##*/}}."
+	cd "${X%"${X##*/}"}." || exit 1
 	pwd
-)
+)"
 
 function usage {
 cat <<EOF
@@ -66,7 +66,7 @@ while getopts :fhi:j:o:v opt; do
 	esac
 done
 # Assign all parameters beyond '--' to OPENSCAD_EXTRA
-shift $(($OPTIND-1))
+shift "$((OPTIND-1))"
 OPENSCAD_EXTRA=("$@")
 
 if [ "$(uname)" = Darwin ]; then
@@ -82,7 +82,7 @@ fi
 
 # Bash 3 (shipped with macOS) does not support 'wait -n', so sleep instead.
 # To upgrade bash on macOS, run: 'brew install bash'.
-if [ ${BASH_VERSINFO[0]} -lt 4 ]; then
+if [ "${BASH_VERSINFO[0]}" -lt 4 ]; then
 	function wait_n {
 		sleep 0.1
 	}
@@ -99,7 +99,7 @@ if ! sort --version > /dev/null; then
 	exit 1
 fi
 
-if [ -z "$INPUT" -o -z "$OUTPUT" ]; then
+if [ -z "$INPUT" ] || [ -z "$OUTPUT" ]; then
 	echo "You must provide both input (-i) and output (-o) files. See help (-h)."
 	exit 1
 fi
@@ -143,32 +143,29 @@ if [ "$FORMAT" = 3mf ]; then
 fi
 
 # Convert OUTPUT to a full path, because we're going to change current directory (see below)
-OUTPUT=$(cd "${OUTPUT%${OUTPUT##*/}}."; pwd)/${OUTPUT##*/}
+OUTPUT="$(cd "${OUTPUT%"${OUTPUT##*/}"}." || exit 1 ; pwd)/${OUTPUT##*/}"
 
 # Change the current dir to the input's dir, for consistent behavior.
 # That is because not all OpenSCAD versions behave the same when the input is not in the current dir;
 # in some versions 'import()' is relative to the current dir instead of the input's dir, and in
 # other versions .csg output is written relative to the input's dir, instead of the current dir.
 ORIGINAL_PWD=$(pwd)
-cd "${INPUT%${INPUT##*/}}."
+cd "${INPUT%"${INPUT##*/}"}." || exit 1
 INPUT=${INPUT##*/}
 
 # Create a temporary, unique .csg file in the input's directory.
 # It needs to be in the input's directory, because it might contain relative "import" statements.
-# On macOS, 'mktemp' cannot create a file with a given extension, so use a workaround.
+# On macOS, 'mktemp' does not expand the XXXs because there's a .csg suffix, so use a workaround.
 INPUT_CSG=$(
-	set -o noclobber
-	NAME=
-	until > "$NAME"; do
-		NAME=tmp.$$_${RANDOM}.csg
-	done 2>/dev/null
-	echo "$NAME"
+	until mktemp "tmp.$$_${RANDOM}_XXXXXX.csg"; do sleep 1; done
 )
 [ -z "$INPUT_CSG" ] && exit
 # Working directory. Use a dir relative to the input dir, because openscad might not have access to
 # the default temp dir; on i.e. Ubuntu, openscad can be a snap package which doesn't have access to /tmp/
 TEMPDIR=$(mktemp -d ./tmp.XXXXXX)
 # Cleanup trigger
+# shellcheck disable=SC2064
+# this SHOULD expand now
 trap "rm -Rf '$(pwd)/${INPUT_CSG}' '$(pwd)/${TEMPDIR}'" EXIT
 
 # Convert input to a .csg file, mainly to resolve named colors. Also to evaluate functions etc. only once.
@@ -220,7 +217,7 @@ if [ -z "$COLORS" ]; then
 	echo "Error: no colors were found at all. Looks like something went wrong..."
 	exit 1
 fi
-let COLOR_COUNT="$(echo "$COLORS" | wc -l)"
+COLOR_COUNT="$(echo "$COLORS" | wc -l)"
 echo "${COLOR_COUNT} unique colors were found."
 if [ $VERBOSE -eq 1 ]; then
 	echo
@@ -257,8 +254,8 @@ function render_color {
 IFS=$'\n'
 JOB_ID=0
 for COLOR in $COLORS; do
-	let JOB_ID++
-	if [ $(jobs | wc -l) -ge $PARALLEL_JOB_LIMIT ]; then
+	(( JOB_ID++ ))
+	if [ "$(jobs | wc -l)" -ge "$PARALLEL_JOB_LIMIT" ]; then
 		# Wait for one job to finish, before continuing
 		wait_n
 	fi
@@ -280,13 +277,9 @@ if [ "$FORMAT" = amf ]; then
 		id=0
 		IFS=$'\n'
 		for COLOR in $COLORS; do
-			IFS=','; set -- $COLOR
-			R=${1#[}
-			G=$2
-			B=$3
-			A=${4%]}
-			echo " <material id=\"${id}\"><color><r>${R// }</r><g>${G// }</g><b>${B// }</b><a>${A// }</a></color></material>"
-			let id++
+			IFS=, read -r R G B A <<<"${COLOR//[\[\] ]/}"
+			echo " <material id=\"${id}\"><color><r>${R}</r><g>${G}</g><b>${B}</b><a>${A}</a></color></material>"
+			(( id++ ))
 		done
 		id=0
 		IFS=$'\n'
@@ -298,16 +291,16 @@ if [ "$FORMAT" = amf ]; then
 				sed "1,4 d; \$ d; s/<volume>/<volume materialid=\"${id}\">/" "${TEMPDIR}/${COLOR}.amf"
 			else
 				echo "Skipping ${COLOR}!" >&2
-				let SKIPPED++
+				(( SKIPPED++ ))
 			fi
-			let id++
+			(( id++ ))
 			echo -ne "\r  ${id}/${COLOR_COUNT} " >&2
 		done
 		echo '</amf>'
 	} > "$OUTPUT"
 
 	# Strip original current dir prefix, if present, to make message smaller
-	OUT=${OUTPUT#${ORIGINAL_PWD}/}
+	OUT=${OUTPUT#"${ORIGINAL_PWD}"/}
 	echo
 	echo "To create a compressed AMF, run:"
 	echo "  zip '${OUT}.zip' '$OUT' && mv '${OUT}.zip' '${OUT}'"
@@ -320,9 +313,10 @@ if [ "$FORMAT" = amf ]; then
 elif [ "$FORMAT" = 3mf ]; then
 	# Run from inside TEMPDIR, to support having a Windows-format 3mfmerge binary
 	(
-		cd "$TEMPDIR"
+		cd "$TEMPDIR" || exit 1
+		# shellcheck disable=SC2001
 		"${DIR_3MFMERGE}"/bin/3mfmerge merged.3mf < \
-				<(echo "$COLORS" | sed "s/\$/\.${FORMAT}/")
+		  <(echo "$COLORS" | sed "s/\$/\.${FORMAT}/")
 	)
 	MERGE_STATUS=$?
 	if ! [ -s "${TEMPDIR}"/merged.3mf ]; then
