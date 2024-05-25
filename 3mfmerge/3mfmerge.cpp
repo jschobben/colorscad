@@ -1,6 +1,10 @@
 #include <algorithm>
 #include <cmath>
+#include <iomanip>
 #include <iostream>
+#include <map>
+#include <sstream>
+
 #include <lib3mf_implicit.hpp>
 
 
@@ -30,6 +34,16 @@ void rotate_indices(Lib3MF::sTriangle& triangle)
   }
 }
 
+std::string replace_all(std::string s, const std::string& key, const std::string& replacement)
+{
+  size_t pos = s.find(key);
+  while (pos != std::string::npos) {
+    s.replace(pos, key.size(), replacement);
+    pos = s.find(key, pos + replacement.size());
+  }
+  return s;
+}
+
 // Returns number of skipped input lines
 int mergeModels(char* outputFile)
 {
@@ -37,15 +51,23 @@ int mergeModels(char* outputFile)
   Lib3MF::PWrapper wrapper = Lib3MF::CWrapper::loadLibrary();
   Lib3MF::PModel mergedModel = wrapper->CreateModel();
   Lib3MF::PComponentsObject mergedComponentsObject = mergedModel->AddComponentsObject();
+  std::map<Lib3MF_uint32, std::string> id_to_name;  // Stores name for each component ID in the merged model
   for (std::string line; std::getline(std::cin, line);) {
     // Define new color, extracted from filename such as "[0, 0.25, 1, 1].3mf"
     Lib3MF_uint32 colorGroupID = -1;
     size_t col_start = line.find("[");
     size_t col_end = line.find("]");
+    std::string component_name;
     if ((col_start == std::string::npos) || (col_end == std::string::npos)) {
       std::cerr << "Not coloring '" << line << "': filename doesn't contain proper square brackets" << std::endl;
     } else {
       std::string col = line.substr(col_start + 1, col_end - (col_start + 1));
+
+      // Determine the component's name.
+      // This name needs to be stored in multiple places to be picked up by the majority of programs.
+      // TODO also allow setting a custom name directly from OpenSCAD code
+      component_name = "[" + col + "]";
+
       std::vector<float> cols;
       size_t prev = 0;
       while (true) {
@@ -116,8 +138,15 @@ int mergeModels(char* outputFile)
             newMesh->SetObjectLevelProperty(colorGroupID, 1);
           }
 
+          // This component name assignment works for Cura, PrusaSlicer, SuperSlicer
+          newMesh->SetName(component_name);
+
           // Add to merged model
-          mergedComponentsObject->AddComponent(newMesh.get(), wrapper->GetIdentityTransform());
+          Lib3MF::PComponent component = mergedComponentsObject->AddComponent(newMesh.get(), wrapper->GetIdentityTransform());
+
+          // Store component's ID->name mapping for later
+          Lib3MF_uint32 id = component->GetObjectResourceID();
+          id_to_name.emplace(id, component_name);
         } else if (object->IsComponentsObject()) {
           std::cout << line << ": skipping component object #" << object->GetResourceID() << std::endl;
         } else {
@@ -130,7 +159,31 @@ int mergeModels(char* outputFile)
       skipped++;
     }
   }
-  mergedModel->AddBuildItem(mergedComponentsObject.get(), wrapper->GetIdentityTransform());
+  Lib3MF::PBuildItem buildItem = mergedModel->AddBuildItem(mergedComponentsObject.get(), wrapper->GetIdentityTransform());
+
+  // Add metadata attachment defining the component names; this works for Bambu Studio, OrcaSlicer
+  Lib3MF::PAttachment attachment = mergedModel->AddAttachment("Metadata/model_settings.config", "");
+  std::stringstream model_settings_stream;
+  model_settings_stream
+      << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" << std::endl
+      << "<config>" << std::endl
+      << "  <object id=\"" << buildItem->GetObjectResourceID() << "\">" << std::endl;
+  for (const auto& pair : id_to_name) {
+    std::string component_name = replace_all(pair.second, "&", "&amp;");
+    component_name = replace_all(std::move(component_name), "\"", "&quot;");
+    model_settings_stream
+        << "    <part id=\"" << pair.first << "\" subtype=\"normal_part\">" << std::endl
+        << "      <metadata key=\"name\" value=\"" << component_name << "\"/>" << std::endl
+        << "    </part>" << std::endl;
+  }
+  model_settings_stream
+      << "  </object>" << std::endl
+      << "</config>" << std::endl;
+  std::string model_settings = std::move(model_settings_stream.str());
+  attachment->ReadFromBuffer(Lib3MF::CInputVector<Lib3MF_uint8>(
+      reinterpret_cast<const Lib3MF_uint8*>(model_settings.data()), model_settings.size()
+  ));
+
   Lib3MF::PWriter writer = mergedModel->QueryWriter("3mf");
   writer->WriteToFile(outputFile);
   return skipped;
