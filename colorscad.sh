@@ -265,6 +265,9 @@ done
 # Wait for all remaining jobs to finish
 wait
 
+# Now sort colors by value, to reduce the need for remapping slicer colors when iteratively designing
+COLORS=$(echo "$COLORS" | sort)
+
 echo
 echo "Generate a merged .${FORMAT} file"
 MERGE_STATUS=0
