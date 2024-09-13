@@ -14,6 +14,10 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 - Sort colors by color name in output, to make remapping color<->filament in a slicer less often needed (thanks: schorsch3000)
 - CI workflow to run tests on OpenSCAD 2015.03/2019.05/2021.01/nightly, for Ubuntu apt/AppImage/MacOS/Windows.
 
+### Added - 3mfmerge
+
+- Assign 3mf component names based on r/g/b/a values, to make assigning filaments to colors easier in a slicer for instance.
+
 ### Fixed
 
 - Improve code quality of `colorscad.sh`, add shellcheck validation (thanks: schorsch3000)
