@@ -110,7 +110,7 @@ jobs:
         run: |
           aria2c "${URI}" -o openscad.dmg
           hdiutil attach openscad.dmg
-          echo /Volumes/OpenSCAD/OpenSCAD.app/Contents/MacOS >> "$GITHUB_PATH"
+          echo /Volumes/OpenSCAD/OpenSCAD*.app/Contents/MacOS >> "$GITHUB_PATH"
         working-directory: ${{ runner.temp }}
 
       - name: Install OpenSCAD (zip)
