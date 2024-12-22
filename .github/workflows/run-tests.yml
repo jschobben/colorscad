@@ -54,10 +54,15 @@ jobs:
             runner: macos-latest
             uri: https://files.openscad.org/OpenSCAD-2021.01.dmg
 
-          - name: Ubuntu nightly
-            runner: ubuntu-latest
+          - name: Ubuntu nightly on 22.04
+            runner: ubuntu-22.04
             apt-key: https://files.openscad.org/OBS-Repository-Key.pub
             apt-repo: https://download.opensuse.org/repositories/home:/t-paul/xUbuntu_22.04/
+            apt: openscad-nightly
+          - name: Ubuntu nightly on latest
+            runner: ubuntu-latest
+            apt-key: https://files.openscad.org/OBS-Repository-Key.pub
+            apt-repo: https://download.opensuse.org/repositories/home:/t-paul/xUbuntu_24.04/
             apt: openscad-nightly
           - name: AppImage nightly
             runner: ubuntu-latest
@@ -152,11 +157,19 @@ jobs:
           echo "Build age: ${AGE} days"
           [[ "$AGE" -lt 30 ]]
 
+      - name: Get OS release
+        run: |
+          if RELEASE=$(lsb_release --release --short 2>/dev/null); then
+            echo "OS_RELEASE=${RELEASE}" >> $GITHUB_ENV
+          else
+            echo "OS_RELEASE=non_linux" >> $GITHUB_ENV
+          fi
+
       - name: Cache 3mfmerge
         uses: actions/cache@v4
         with:
           path: 3mfmerge/bin
-          key: test-${{ matrix.runner }}-${{ runner.arch }}-${{ env.ImageVersion }}-3mfmerge-${{ hashFiles('3mfmerge/*') }}
+          key: test-${{ matrix.runner }}-${{ runner.arch }}-${{ env.OS_RELEASE }}-${{ env.ImageVersion }}-3mfmerge-${{ hashFiles('3mfmerge/*') }}
 
       # This step takes most of the time as it includes lib3mf build, hence the caching.
       - name: Build 3mfmerge
