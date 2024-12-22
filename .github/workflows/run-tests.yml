@@ -54,10 +54,15 @@ jobs:
             runner: macos-latest
             uri: https://files.openscad.org/OpenSCAD-2021.01.dmg
 
-          - name: Ubuntu nightly
-            runner: ubuntu-latest
+          - name: Ubuntu nightly on 22.04
+            runner: ubuntu-22.04
             apt-key: https://files.openscad.org/OBS-Repository-Key.pub
             apt-repo: https://download.opensuse.org/repositories/home:/t-paul/xUbuntu_22.04/
+            apt: openscad-nightly
+          - name: Ubuntu nightly on latest
+            runner: ubuntu-latest
+            apt-key: https://files.openscad.org/OBS-Repository-Key.pub
+            apt-repo: https://download.opensuse.org/repositories/home:/t-paul/xUbuntu_24.04/
             apt: openscad-nightly
           - name: AppImage nightly
             runner: ubuntu-latest
