@@ -7,6 +7,7 @@ DIR_SCRIPT="$(
 	pwd
 )"
 
+
 function usage {
 cat <<EOF
 Usage: $0 -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]
@@ -18,6 +19,7 @@ Options
   -j  Maximum number of parallel jobs to use: defaults to 8, reduce if you're low on RAM
   -o  Output file: it must not yet exist (unless option -f is used),
       and must have as extension either '.amf' or '.3mf'
+  -p  The path to the openscad binary to use
   -v  Verbose logging: mostly, this enables the OpenSCAD rendering stats output (default disabled)
 
 Example which also includes some openscad options at the end:
@@ -30,7 +32,8 @@ INPUT=
 OUTPUT=
 PARALLEL_JOB_LIMIT=8
 VERBOSE=0
-while getopts :fhi:j:o:v opt; do
+OPENSCAD_CMD=openscad
+while getopts :fhi:j:o:p:v opt; do
 	case "$opt" in
 		f)
 			FORCE=1;
@@ -56,6 +59,9 @@ while getopts :fhi:j:o:v opt; do
 			fi
 			OUTPUT="$OPTARG"
 		;;
+		p)
+		  OPENSCAD_CMD="$OPTARG"
+		;;  
 		v)
 			VERBOSE=1
 		;;
@@ -120,14 +126,14 @@ if [ "$FORMAT" != amf ] && [ "$FORMAT" != 3mf ]; then
 	exit 1
 fi
 
-if ! command -v openscad &> /dev/null; then
-	echo "Error: openscad command not found! Make sure it's in your PATH."
+if ! command -v ${OPENSCAD_CMD} &> /dev/null; then
+	echo "Error: $OPENSCAD_CMD command not found! Make sure it's in your PATH."
 	exit 1
 fi
 
 if [ "$FORMAT" = 3mf ]; then
 	# Check if openscad was built with 3mf support
-	if ! openscad --info 2>&1 | grep '^lib3mf version: ' | grep -qv 'not enabled'; then
+	if ! ${OPENSCAD_CMD} --info 2>&1 | grep '^lib3mf version: ' | grep -qv 'not enabled'; then
 		echo "Warning: your openscad version does not seem to have 3MF support, see 'openscad --info'."
 		echo "Either update it, or use AMF output."
 		echo
@@ -169,7 +175,7 @@ TEMPDIR=$(mktemp -d ./tmp.XXXXXX)
 trap "rm -Rf '$(pwd)/${INPUT_CSG}' '$(pwd)/${TEMPDIR}'" EXIT
 
 # Convert input to a .csg file, mainly to resolve named colors. Also to evaluate functions etc. only once.
-openscad "$INPUT" -o "$INPUT_CSG" "${OPENSCAD_EXTRA[@]}"
+${OPENSCAD_CMD} "$INPUT" -o "$INPUT_CSG" "${OPENSCAD_EXTRA[@]}"
 
 if ! [ -s "$INPUT_CSG" ]; then
 	echo "Error: the produced file '$INPUT_CSG' is empty. Looks like something went wrong..."
@@ -184,7 +190,7 @@ echo "Get list of used colors"
 # means more geometry; we want to start the biggest jobs first to improve parallelism.
 COLOR_ID_TAG="colorid_$$_${RANDOM}"
 COLORS=$(
-	openscad "$INPUT_CSG" -o "${TEMPDIR}/no_color.stl" -D "module color(c) {echo(${COLOR_ID_TAG}=str(c));}" 2>&1 |
+	${OPENSCAD_CMD} "$INPUT_CSG" -o "${TEMPDIR}/no_color.stl" -D "module color(c) {echo(${COLOR_ID_TAG}=str(c));}" 2>&1 |
 	tr -d '\r"' |
 	sed -n "s/^ECHO: ${COLOR_ID_TAG} = // p" |
 	sort |
@@ -241,7 +247,7 @@ function render_color {
 		if [ $VERBOSE -ne 1 ]; then
 			EXTRA_ARGS=--quiet
 		fi
-		openscad "$INPUT_CSG" -o "$OUT_FILE" $EXTRA_ARGS -D "\$colored = false; module color(c) {if (\$colored) {children();} else {\$colored = true; if (str(c) == \"${COLOR}\") children();}}"
+		${OPENSCAD_CMD} "$INPUT_CSG" -o "$OUT_FILE" $EXTRA_ARGS -D "\$colored = false; module color(c) {if (\$colored) {children();} else {\$colored = true; if (str(c) == \"${COLOR}\") children();}}"
 		if [ -s "$OUT_FILE" ]; then
 			echo "Finished at ${OUT_FILE}"
 		else
