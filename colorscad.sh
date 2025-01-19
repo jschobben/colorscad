@@ -19,21 +19,23 @@ Options
   -j  Maximum number of parallel jobs to use: defaults to 8, reduce if you're low on RAM
   -o  Output file: it must not yet exist (unless option -f is used),
       and must have as extension either '.amf' or '.3mf'
-  -p  The path to the openscad binary to use
   -v  Verbose logging: mostly, this enables the OpenSCAD rendering stats output (default disabled)
+
+Environment variables
+  OPENSCAD_CMD  The name of the openscad binary to use, may include full path (default: 'openscad')
 
 Example which also includes some openscad options at the end:
   $0 -i input.scad -o output.3mf -f -j 4 -- -D 'var="some value"' --hardwarnings
 EOF
 }
 
+
 FORCE=0
 INPUT=
 OUTPUT=
 PARALLEL_JOB_LIMIT=8
 VERBOSE=0
-OPENSCAD_CMD=openscad
-while getopts :fhi:j:o:p:v opt; do
+while getopts :fhi:j:o:v opt; do
 	case "$opt" in
 		f)
 			FORCE=1;
@@ -59,9 +61,6 @@ while getopts :fhi:j:o:p:v opt; do
 			fi
 			OUTPUT="$OPTARG"
 		;;
-		p)
-		  OPENSCAD_CMD="$OPTARG"
-		;;  
 		v)
 			VERBOSE=1
 		;;
@@ -74,6 +73,11 @@ done
 # Assign all parameters beyond '--' to OPENSCAD_EXTRA
 shift "$((OPTIND-1))"
 OPENSCAD_EXTRA=("$@")
+
+if [ -n "$OPENSCAD_CMD" ]; then
+	echo "OpenSCAD binary in use: $(command -v "$OPENSCAD_CMD")"
+fi
+: "${OPENSCAD_CMD=openscad}"
 
 if [ "$(uname)" = Darwin ]; then
 	# BSD sed, as used on macOS, uses a different parameter than GNU sed to enable line-buffered mode
