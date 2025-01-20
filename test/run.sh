@@ -5,13 +5,14 @@ set -o errexit -o errtrace -o nounset
 X=$(command -v "$0")
 cd "${X%${X##*/}}."
 
+: "${OPENSCAD_CMD=openscad}"
 COLORSCAD=$(pwd)/../colorscad.sh
 
 # Use a temp dir relative to this script's dir, because openscad might not have access to the default
 # temp dir; on i.e. Ubuntu, openscad can be a snap package which doesn't have access to /tmp/
 TEMPDIR_REL=$(mktemp -d ./tmp.XXXXXX)
 TEMPDIR="$(pwd)/${TEMPDIR_REL}"
-trap "openscad --info 2>&1 | grep '^OpenSCAD Version: '; rm -Rf '$TEMPDIR'" EXIT
+trap "'${OPENSCAD_CMD}' --info 2>&1 | grep '^OpenSCAD Version: '; rm -Rf '$TEMPDIR'" EXIT
 
 SKIP_3MF=0
 OLD_BOOLEAN=0
@@ -31,11 +32,12 @@ function grep_q {
 	grep "$@" > /dev/null
 }
 
+
 # If a test fails, check if it's due to the used openscad version; if so, suggest workarounds.
 function fail_tips {
 	trap - ERR  # Prevent recursion
 	if [ $SKIP_3MF -eq 0 ]; then
-		if ! openscad --info 2>&1 | grep '^lib3mf version: ' | grep_q -v 'not enabled'; then
+		if ! "$OPENSCAD_CMD" --info 2>&1 | grep '^lib3mf version: ' | grep_q -v 'not enabled'; then
 			echo "Warning: all the 3MF tests will fail if your openscad version does not have 3mf support."
 			echo "To skip those tests, use: $0 skip3mf"
 			echo
@@ -46,7 +48,7 @@ function fail_tips {
 			cd "$TEMPDIR"
 			echo 'module empty(){}; intersection() {empty(); cube();}' > intersect.scad
 			# <=2019.05 ignores the "empty" module, producing output; newer versions treat it as an empty volume.
-			openscad --quiet intersect.scad -o intersect.stl || true
+			"$OPENSCAD_CMD" --quiet intersect.scad -o intersect.stl || true
 			if [ -s intersect.stl ]; then
 				echo "Warning: your openscad version uses 'old' boolean semantics."
 				echo "To properly test on this version, use: $0 old_boolean"
@@ -55,7 +57,7 @@ function fail_tips {
 			rm intersect.*
 		)
 	fi
-	if ! openscad --help 2>&1 | grep -q -- '--input'; then
+	if ! "$OPENSCAD_CMD" --help 2>&1 | grep -q -- '--input'; then
 		# On newer builds, 'predictible-output' must be enabled to get the same behavior as older ones
 		echo "For OpenSCAD >= 2024.01.26, only a build with experimental features enabled will work."
 	fi
@@ -133,11 +135,15 @@ function test_render {
 	local OUTPUT="${TEMPDIR}/output.${FORMAT}"
 	rm -f "$OUTPUT"
 	# OpenSCAD >= 2024.01.26 with lib3mf v2 requires enabling "predictible-output" to get the same behavior as older versions
-	if openscad --help 2>&1 | grep -q predictible-output; then
-		function openscad { command openscad --enable=predictible-output "$@"; }; export -f openscad
-	fi
-	${COLORSCAD} -i "$INPUT" -o "$OUTPUT" -j 4 > >(sed 's/^/  /') 2>&1
-	unset openscad
+	(
+		if "$OPENSCAD_CMD" --help 2>&1 | grep -q predictible-output; then
+			export OPENSCAD_CMD_ORG=${OPENSCAD_CMD}
+			function openscad_test_override { "$OPENSCAD_CMD_ORG" --enable=predictible-output "$@"; }
+			export -f openscad_test_override
+			export OPENSCAD_CMD=openscad_test_override
+		fi
+		${COLORSCAD} -i "$INPUT" -o "$OUTPUT" -j 4 > >(sed 's/^/  /') 2>&1
+	)
 
 	# Canonicalize the expectation and output, so they can be compared
 	rm -Rf "${TEMPDIR}/exp" "${TEMPDIR}/out"
@@ -160,8 +166,8 @@ function test_render {
 
 
 # Make sure there's something to test
-if ! command -v openscad &> /dev/null; then
-	echo "Error: openscad command not found! Make sure it's in your PATH."
+if ! command -v "$OPENSCAD_CMD" &> /dev/null; then
+	echo "Error: ${OPENSCAD_CMD} command not found! Make sure it's in your PATH."
 	exit 1
 fi
 
@@ -189,19 +195,21 @@ echo "Testing bad weather:"
 	${COLORSCAD} -i color.scad -o wrong.ext | grep_q "the output file's extension must be one of 'amf' or '3mf'"
 	(
 		function command {
-			if [ "$1" = -v ] && [ "$2" = openscad ]; then return 1; fi
+			if [ "$1" = -v ] && [ "$2" = "$OPENSCAD_CMD" ]; then return 1; fi
 			builtin command "$@"
 		}
 		export -f command
-		${COLORSCAD} -i color.scad -o output.amf | grep_q 'openscad command not found'
+		${COLORSCAD} -i color.scad -o output.amf | grep_q "${OPENSCAD_CMD} command not found"
 	)
+	OPENSCAD_CMD=i_am_not_here ${COLORSCAD} -i color.scad -o output.amf | grep_q 'i_am_not_here command not found'
 	(
 		trap 'echo "Failure on line $LINENO"; exit 1' ERR
 		# If 'openscad --info' does not list 3mf support, it's a warning (followed by an abort due to this mock not producing output)
-		function openscad { :; }
-		export -f openscad
+		function openscad_test_override { :; }
+		export -f openscad_test_override
+		export OPENSCAD_CMD=openscad_test_override
 		${COLORSCAD} -i color.scad -o output.3mf | grep_q 'Warning: your openscad version does not seem to have 3MF support'
-		function openscad { echo "lib3mf version: (not enabled)"; }
+		function openscad_test_override { echo "lib3mf version: (not enabled)"; }
 		${COLORSCAD} -i color.scad -o output.3mf | grep_q 'Warning: your openscad version does not seem to have 3MF support'
 	)
 	echo 'cheese' > syntax_error.scad
