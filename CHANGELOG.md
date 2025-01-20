@@ -9,6 +9,10 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+### Added
+
+- Support using OpenSCAD binaries which are not called `openscad`, via env var `OPENSCAD_CMD` (thanks: pinkfish)
+
 ## [0.5.2] - 2024-09-15
 
 ### Added
