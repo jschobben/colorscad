@@ -106,7 +106,12 @@ jobs:
       - name: Install OpenSCAD (AppImage)
         if: endsWith(env.URI, '.AppImage')
         run: |
-          sudo apt install fuse libopengl0 libegl1
+          CMD='apt install fuse libopengl0 libegl1'
+          sudo ${CMD} || {
+            echo "'apt install' failed, running 'apt update' and retry..."
+            sudo apt update
+            sudo ${CMD}
+          }
           sudo aria2c "${URI}" -d /usr/local/bin -o openscad
           sudo chmod +x /usr/local/bin/openscad
 
