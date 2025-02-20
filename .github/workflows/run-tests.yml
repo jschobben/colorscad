@@ -100,7 +100,12 @@ jobs:
             echo 'deb ${{ matrix.apt-repo }} ./' | sudo tee /etc/apt/sources.list.d/openscad.list
             sudo apt update
           fi
-          sudo apt install '${{ matrix.apt }}'
+          CMD='apt install ${{ matrix.apt }}'
+          sudo ${CMD} || {
+            echo "'apt install' failed, running 'apt update' and retry..."
+            sudo apt update
+            sudo ${CMD}
+          }
           which openscad || sudo ln -s "$(which openscad-nightly)" /usr/local/bin/openscad
 
       - name: Install OpenSCAD (AppImage)
