@@ -13,6 +13,9 @@ otherwise, it is downloaded to the build folder and built from source as part of
 That means it doesn't have to be manually installed, although if it isn't then the initial build
 takes longer and an active internet connection is needed during the configuration stage.
 
+To disable this automatic downloading, and instead fail the build if Lib3MF is not installed,
+add parameter `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` to the `cmake ..` command described below.
+
 The colorscad.sh script expects a binary called '3mfmerge' in the '3mfmerge/bin/' dir,
 which is the default output location of the build.
 
