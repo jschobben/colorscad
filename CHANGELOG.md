@@ -13,6 +13,10 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 - Support using OpenSCAD binaries which are not called `openscad`, via env var `OPENSCAD_CMD` (thanks: pinkfish)
 
+### Added - 3mfmerge
+
+- Use system's Lib3MF, if a suitable version is installed; otherwise, fall-back to building from source as before.
+
 ## [0.5.2] - 2024-09-15
 
 ### Added
