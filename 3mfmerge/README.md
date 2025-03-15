@@ -16,8 +16,8 @@ takes longer and an active internet connection is needed during the configuratio
 To disable this automatic downloading, and instead fail the build if Lib3MF is not installed,
 add parameter `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` to the `cmake ..` command described below.
 
-The colorscad.sh script expects a binary called '3mfmerge' in the '3mfmerge/bin/' dir,
-which is the default output location of the build.
+The colorscad.sh script first looks for a binary called '3mfmerge' in the '3mfmerge/bin/' dir,
+which is the default output location of the build. If this is not found, it will look on the PATH.
 
 How to build
 ------------
@@ -40,6 +40,13 @@ To work around that, force a 64-bit build:
 cmake .. -DCMAKE_GENERATOR_PLATFORM=x64
 cmake --build .
 ```
+
+If you have Lib3MF installed as a system package, and prefer to also properly install `3mfmerge`,
+simply use cmake's standard mechanism for that:
+```
+cmake --install .
+```
+After doing this, it's safe to remove ```3mfmerge/bin```.
 
 ### Building on non-x86_64-based systems
 
