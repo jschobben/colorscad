@@ -9,6 +9,8 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+## [0.6.1] - 2025-03-15
+
 ### Fixed - 3mfmerge
 
 - Search on PATH for `3mfmerge` binary, so it's no longer required to have the binary in its default location at `3mfmerge/bin/`.
@@ -143,7 +145,8 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 - Everything! Only supports creating a colored .amf file.
 
-[Unreleased]: https://github.com/jschobben/colorscad/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/jschobben/colorscad/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/jschobben/colorscad/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/jschobben/colorscad/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/jschobben/colorscad/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/jschobben/colorscad/compare/v0.5.0...v0.5.1
