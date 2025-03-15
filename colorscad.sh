@@ -145,11 +145,12 @@ if [ "$FORMAT" = 3mf ]; then
 	fi
 
 	DIR_3MFMERGE=${DIR_SCRIPT}/3mfmerge
-	if ! [ -x "${DIR_3MFMERGE}/bin/3mfmerge" ] && ! [ -x "${DIR_3MFMERGE}/bin/3mfmerge.exe" ]; then
+	if ! BIN_3MFMERGE=$(PATH="${DIR_3MFMERGE}/bin:${PATH}" command -v 3mfmerge); then
 		echo "3MF output depends on a binary tool, that needs to be compiled first."
 		echo "Please see '3mfmerge/README.md' in the colorscad git repo (i.e. '${DIR_3MFMERGE}/')."
 		exit 1
 	fi
+	echo "Using ${BIN_3MFMERGE}"
 fi
 
 # Convert OUTPUT to a full path, because we're going to change current directory (see below)
@@ -328,7 +329,7 @@ elif [ "$FORMAT" = 3mf ]; then
 	(
 		cd "$TEMPDIR" || exit 1
 		# shellcheck disable=SC2001
-		"${DIR_3MFMERGE}"/bin/3mfmerge merged.3mf < \
+		"${BIN_3MFMERGE}" merged.3mf < \
 		  <(echo "$COLORS" | sed "s/\$/\.${FORMAT}/")
 	)
 	MERGE_STATUS=$?

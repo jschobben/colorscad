@@ -9,6 +9,10 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+### Fixed - 3mfmerge
+
+- Search on PATH for `3mfmerge` binary, so it's no longer required to have the binary in its default location at `3mfmerge/bin/`.
+
 ## [0.6.0] - 2025-03-15
 
 ### Added
