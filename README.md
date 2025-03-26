@@ -29,10 +29,24 @@ Similarly, Mac users can try:<br>
 
 This script should mostly work on Bash 3 (i.e. Mac's non-Homebrew default), although for best results Bash 4 is recommended.
 
+Installation
+------------
+
+**On Fedora Linux:**
+
+ColorSCAD is included in the standard repository on Fedora Linux 41 and later:
+```
+sudo dnf install colorscad
+```
+
 Usage
 -----
 
+**From source:**
 ```./colorscad.sh -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]```
+
+**On Fedora Linux:**
+```colorscad -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]```
 
 The output file must have as extension either '.amf' or '.3mf'.
 For more detailed usage info that lists all the options, run `./colorscad.sh -h`.
