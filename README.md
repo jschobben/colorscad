@@ -43,10 +43,14 @@ Usage
 -----
 
 **From source:**
-```./colorscad.sh -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]```
+```
+./colorscad.sh -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]
+```
 
 **On Fedora Linux:**
-```colorscad -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]```
+```
+colorscad -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]
+```
 
 The output file must have as extension either '.amf' or '.3mf'.
 For more detailed usage info that lists all the options, run `./colorscad.sh -h`.
