@@ -9,6 +9,11 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+### Added
+
+- Allow installing colorscad + 3mfmerge via a unified CMake script in the repo root (thanks: hegjon).
+- ColorSCAD is now available in Fedora Linux! Document install steps, and reword README slightly.
+
 ## [0.6.1] - 2025-03-15
 
 ### Fixed - 3mfmerge

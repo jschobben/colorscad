@@ -39,21 +39,39 @@ ColorSCAD is included in the standard repository on Fedora Linux 41 and later:
 sudo dnf install colorscad
 ```
 
+**On other systems:**
+
+ColorSCAD can be installed using the standard CMake installation procedure
+(which will in most cases install it to `/usr/local/bin/`), by following these steps from the repo root:
+```
+mkdir build
+cd build
+cmake ..
+cmake --build .
+sudo cmake --install .
+```
+This will also take care of building and installing `3mfmerge`.
+
+**From source:**
+
+It's possible to use ColorSCAD directly from source, without installation.
+In that case, to enable 3MF export the c++ `3mfmerge` tool first needs to be compiled;
+see [3mfmerge/README.md](3mfmerge/README.md) for details.
+
 Usage
 -----
 
-**From source:**
-```
-./colorscad.sh -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]
-```
+To call ColorSCAD from source, use `<path>/colorscad.sh`;
+when it is installed (as on Fedora Linux, or by manual installation), simply call it as `colorscad`, without `.sh`.
 
-**On Fedora Linux:**
+Basic usage:
 ```
 colorscad -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]
 ```
 
-The output file must have as extension either '.amf' or '.3mf'.
-For more detailed usage info that lists all the options, run `./colorscad.sh -h`.
+The output file must have as extension either `.amf` or `.3mf`.
+
+For more detailed usage info that lists all the options, run `colorscad -h`.
 
 How it works
 ------------
@@ -81,9 +99,6 @@ There is no need to make any ColorSCAD-specific changes to your .scad file(s), h
    No fancy gradients, please. If you must, it's recommended to use Linux or macOS since it runs much faster than on Windows.
 3) Let's avoid weird geometry such as overlapping color volumes...
    Avoid using multiple colors in an `intersection()` or `difference()`, if unavoidable then just wrap it in a `color()` statement.
-
-To export a 3MF file, the lib3mf library is needed, and the c++ '3mfmerge' tool using it first needs to be compiled.
-See [3mfmerge/README.md](3mfmerge/README.md).
 
 Tests
 -----
