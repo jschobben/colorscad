@@ -9,6 +9,8 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+## [0.6.2] - 2025-03-30
+
 ### Added
 
 - Allow installing colorscad + 3mfmerge via a unified CMake script in the repo root (thanks: hegjon).
@@ -150,7 +152,8 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 - Everything! Only supports creating a colored .amf file.
 
-[Unreleased]: https://github.com/jschobben/colorscad/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/jschobben/colorscad/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/jschobben/colorscad/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/jschobben/colorscad/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/jschobben/colorscad/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/jschobben/colorscad/compare/v0.5.1...v0.5.2
