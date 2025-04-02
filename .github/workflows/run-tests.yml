@@ -208,6 +208,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: File permissions
+        run: |
+          if find . -name .git -prune -o -type f ! -path ./colorscad.sh ! -path ./test/run.sh -perm /111 -ls | grep .; then
+            echo "::error::Found some files with unexpected executable permission"
+            exit 1
+          fi
+
       - name: shellcheck colorscad.sh
         run: |
           shellcheck colorscad.sh
