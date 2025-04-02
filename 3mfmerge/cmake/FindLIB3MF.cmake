@@ -52,6 +52,9 @@ else()
   )
   # LIB3MF's tests reference submodule dependencies, not included in the tarball
   option(LIB3MF_TESTS OFF)
+  # LIB3MF still uses "cmake_minimum_required (VERSION 3.0)", which is unsupported in CMake 4.0
+  set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+
   FetchContent_MakeAvailable(lib3mf)
 
   set_target_properties(lib3mf PROPERTIES
