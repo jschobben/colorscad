@@ -24,10 +24,6 @@ jobs:
             uri: https://files.openscad.org/OpenSCAD-2015.03-3.dmg
             test-params: skip3mf old_boolean
 
-          - name: Ubuntu 2019.05
-            runner: ubuntu-20.04
-            apt: openscad=2019.05-3ubuntu5
-            test-params: old_boolean
           - name: Windows 2019.05
             runner: windows-latest
             uri: https://files.openscad.org/OpenSCAD-2019.05-x86-64.zip
@@ -53,6 +49,10 @@ jobs:
           - name: MacOS 2021.01
             runner: macos-latest
             uri: https://files.openscad.org/OpenSCAD-2021.01.dmg
+
+          - name: Ubuntu 2021.01 on 24.04
+            runner: ubuntu-24.04
+            apt: openscad=2021.01-6build4
 
           - name: Ubuntu nightly on 22.04
             runner: ubuntu-22.04
