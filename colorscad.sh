@@ -17,7 +17,8 @@ Options
   -h      This message you are reading
   -i ARG  Input file
   -j ARG  Maximum number of parallel jobs to use: defaults to 8, reduce if you're low on RAM
-  -k ARG  Keep intermediate per-color models
+  -k ARG  Keep intermediate per-color models in the given directory; this directory must not yet exist,
+          and its parent directory must be writable by this script.
   -o ARG  Output file: it must not yet exist (unless option -f is used),
           and must have as extension either '.amf' or '.3mf'
   -v      Verbose logging: mostly, this enables the OpenSCAD rendering stats output (default disabled)
@@ -33,11 +34,11 @@ EOF
 
 FORCE=0
 INPUT=
-KEEP_INTERMEDIATES=0
+INTERMEDIATES_DIR=
 OUTPUT=
 PARALLEL_JOB_LIMIT=8
 VERBOSE=0
-while getopts :fhi:j:ko:v opt; do
+while getopts :fhi:j:k:o:v opt; do
 	case "$opt" in
 		f)
 			FORCE=1;
@@ -57,7 +58,11 @@ while getopts :fhi:j:ko:v opt; do
 			PARALLEL_JOB_LIMIT="$OPTARG"
 		;;
 		k)
-			KEEP_INTERMEDIATES=1
+			INTERMEDIATES_DIR="$OPTARG"
+			if [[ -d "$INTERMEDIATES_DIR" ]]; then
+				echo "Error: intermediates directory '$INTERMEDIATES_DIR' already exists" >&2
+				exit 1
+			fi
 		;;
 		o)
 			if [ -n "$OUTPUT" ]; then
@@ -179,25 +184,13 @@ INPUT_CSG=$(
 # Working directory. Use a dir relative to the input dir, because openscad might not have access to
 # the default temp dir; on i.e. Ubuntu, openscad can be a snap package which doesn't have access to /tmp/
 TEMPDIR=$(mktemp -d ./tmp.XXXXXX)
-# Intermediates dir; must be non-existing and possible to create. For now, hardcoded to be a subdir of TEMPDIR.
-INTERMEDIATES_DIR=${TEMPDIR}/intermediates
-mkdir "$INTERMEDIATES_DIR" || {
-	echo "Unable to create '${INTERMEDIATES_DIR}'. Please make sure it does not yet exist, and its parent directory is writable." >&2
-	exit 1
-}
+# Intermediates dir; will be moved later to INTERMEDIATES_DIR, if enabled
+mkdir "${TEMPDIR}/intermediates"
+
 # Cleanup trigger
 # shellcheck disable=SC2064
 # this SHOULD expand now
-trap "
-	rm -Rf '$(pwd)/${INPUT_CSG}'
-	if [[ $KEEP_INTERMEDIATES -eq 1 ]]; then
-		echo 'Keeping intermediate per-color models: ${INTERMEDIATES_DIR}'
-		# No point trying to remove TEMPDIR while INTERMEDIATES_DIR is hardcoded to be a subdirectory
-	else
-		rm -Rf '$(pwd)/${INTERMEDIATES_DIR}'
-		rmdir '$(pwd)/${TEMPDIR}'
-	fi
-" EXIT
+trap "rm -Rf '$(pwd)/${INPUT_CSG}' '$(pwd)/${TEMPDIR}'" EXIT
 
 # Convert input to a .csg file, mainly to resolve named colors. Also to evaluate functions etc. only once.
 "$OPENSCAD_CMD" "$INPUT" -o "$INPUT_CSG" "${OPENSCAD_EXTRA[@]}"
@@ -361,6 +354,15 @@ elif [ "$FORMAT" = 3mf ]; then
 else
 	echo "Merging of format '${FORMAT}' not yet implemented!"
 	exit 1
+fi
+
+# Move intermediates to requested directory, if applicable
+if [[ -n "$INTERMEDIATES_DIR" ]]; then
+	echo "Keeping intermediates in '${INTERMEDIATES_DIR}'"
+	mv "${TEMPDIR}/intermediates" "$INTERMEDIATES_DIR" || {
+		echo "Unable to move intermediates to '${INTERMEDIATES_DIR}'. Please make sure its parent directory is writable." >&2
+		exit 1
+	}
 fi
 
 echo
