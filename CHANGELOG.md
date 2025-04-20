@@ -9,6 +9,10 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+### Fixed
+
+- Small improvement to "-h": highlight need to pass an extra argument.
+
 ## [0.6.2] - 2025-03-30
 
 ### Added

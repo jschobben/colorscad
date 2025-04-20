@@ -13,13 +13,13 @@ cat <<EOF
 Usage: $0 -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]
 
 Options
-  -f  Force, this will overwrite the output file if it exists
-  -h  This message you are reading
-  -i  Input file
-  -j  Maximum number of parallel jobs to use: defaults to 8, reduce if you're low on RAM
-  -o  Output file: it must not yet exist (unless option -f is used),
-      and must have as extension either '.amf' or '.3mf'
-  -v  Verbose logging: mostly, this enables the OpenSCAD rendering stats output (default disabled)
+  -f      Force, this will overwrite the output file if it exists
+  -h      This message you are reading
+  -i ARG  Input file
+  -j ARG  Maximum number of parallel jobs to use: defaults to 8, reduce if you're low on RAM
+  -o ARG  Output file: it must not yet exist (unless option -f is used),
+          and must have as extension either '.amf' or '.3mf'
+  -v      Verbose logging: mostly, this enables the OpenSCAD rendering stats output (default disabled)
 
 Environment variables
   OPENSCAD_CMD  The name of the openscad binary to use, may include full path (default: 'openscad')
