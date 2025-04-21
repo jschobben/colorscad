@@ -9,6 +9,10 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+### Added
+
+- Add option '-k' to allow keeping intermediate per-color models in a specified directory.
+
 ### Fixed
 
 - Small improvement to "-h": highlight need to pass an extra argument.
