@@ -237,6 +237,11 @@ echo "Testing bad weather:"
 	${COLORSCAD} -i syntax_error.scad -o output.amf 2>&1 | grep_q "the produced file 'tmp\..*\.csg' is empty"
 	echo '' > empty.scad
 	${COLORSCAD} -i empty.scad -o output.amf | grep_q 'no colors were found at all'
+	mkdir existing_dir
+	${COLORSCAD} -i color.scad -o output.amf -k existing_dir 2>&1 \
+	| grep_q "Error: intermediates directory 'existing_dir' already exists"
+	${COLORSCAD} -i color.scad -o output.amf -k nonexisting/sub_dir 2>&1 \
+	| grep_q "Unable to move intermediates to 'nonexisting/sub_dir'. Please make sure its parent directory is writable."
 )
 echo "Bad weather tests all passed."
 
