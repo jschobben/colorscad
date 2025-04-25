@@ -253,13 +253,13 @@ echo
 echo "Create a separate .${FORMAT} file for each color"
 
 # Render INPUT_CSG, but only process geometry for the given color.
-# Output is written to "$INTERMEDIATES_DIR/$COLOR.$FORMAT".
-# Variables INPUT_CSG, FORMAT and INTERMEDIATES_DIR should be defined.
+# Output is written to "${TEMPDIR}/intermediates/$COLOR.$FORMAT".
+# Variables INPUT_CSG, FORMAT and TEMPDIR should be defined.
 function render_color {
 	local COLOR=$1
 
 	{
-		local OUT_FILE="${INTERMEDIATES_DIR}/${COLOR}.${FORMAT}"
+		local OUT_FILE="${TEMPDIR}/intermediates/${COLOR}.${FORMAT}"
 		echo "Starting"
 		local EXTRA_ARGS=
 		if [ $VERBOSE -ne 1 ]; then
@@ -311,11 +311,11 @@ if [ "$FORMAT" = amf ]; then
 		id=0
 		IFS=$'\n'
 		for COLOR in $COLORS; do
-			if grep -q -m 1 object "${INTERMEDIATES_DIR}/${COLOR}.amf"; then
+			if grep -q -m 1 object "${TEMPDIR}/intermediates/${COLOR}.amf"; then
 				echo " <object id=\"${id}\">"
 				# Crudely skip the AMF header/footer; assume there is exactly one "<object>" tag and keep only its contents.
 				# At the same time, set the volume's material ID, and output the result.
-				sed "1,4 d; \$ d; s/<volume>/<volume materialid=\"${id}\">/" "${INTERMEDIATES_DIR}/${COLOR}.amf"
+				sed "1,4 d; \$ d; s/<volume>/<volume materialid=\"${id}\">/" "${TEMPDIR}/intermediates/${COLOR}.amf"
 			else
 				echo "Skipping ${COLOR}!" >&2
 				(( SKIPPED++ ))
@@ -338,19 +338,19 @@ if [ "$FORMAT" = amf ]; then
 		MERGE_STATUS=1
 	fi
 elif [ "$FORMAT" = 3mf ]; then
-	# Run from inside INTERMEDIATES_DIR, to support having a Windows-format 3mfmerge binary
+	# Run from inside TEMPDIR/intermediates, to support having a Windows-format 3mfmerge binary
 	(
-		cd "$INTERMEDIATES_DIR" || exit 1
+		cd "${TEMPDIR}/intermediates" || exit 1
 		# shellcheck disable=SC2001
 		"${BIN_3MFMERGE}" merged.3mf < \
 		  <(echo "$COLORS" | sed "s/\$/\.${FORMAT}/")
 	)
 	MERGE_STATUS=$?
-	if ! [ -s "${INTERMEDIATES_DIR}"/merged.3mf ]; then
+	if ! [ -s "${TEMPDIR}"/intermediates/merged.3mf ]; then
 		echo "Merging failed, aborting!"
 		exit 1
 	fi
-	mv "${INTERMEDIATES_DIR}"/merged.3mf "$OUTPUT"
+	mv "${TEMPDIR}"/intermediates/merged.3mf "$OUTPUT"
 else
 	echo "Merging of format '${FORMAT}' not yet implemented!"
 	exit 1
