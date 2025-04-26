@@ -218,7 +218,11 @@ jobs:
       - name: shellcheck colorscad.sh
         run: |
           shellcheck colorscad.sh
-      # TODO check tests, 3mfmerge
+
+      - name: shellcheck test/run.sh
+        run: |
+          shellcheck test/run.sh
+      # TODO check 3mfmerge
 
   # Collect results, to be used as combined status check for PRs
   all-succeeded:

@@ -102,7 +102,7 @@ function canonicalize_amf {
 		# That obviously changes the triangle indices, so first replace these indices with coordinates.
 		# 1) Store all vertices in an array
 		local VERTICES
-		mapfile -t VERTICES < <(echo "$OBJECT" | grep '<vertex>' || true)
+		IFS=$'\n' read -r -d '' -a VERTICES < <(echo "$OBJECT" | grep '<vertex>' || true) || true
 		# 2) Loop over each triangle, replacing the index of triangles with the vertex definition
 		echo "$OBJECT" | grep '<triangle>' \
 				| sed -E 's#<triangle><v1>(.*)</v1><v2>(.*)</v2><v3>(.*)</v3></triangle>#\1 \2 \3#g' \
