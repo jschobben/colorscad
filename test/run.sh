@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2030 # OPENSCAD_CMD is modified in a subshell several times
+# shellcheck disable=SC2031 # ... and it's fine those changes are lost outside the subshell
+# shellcheck disable=SC2317 # several defined functions are only called indirectly
 set -o errexit -o errtrace -o nounset
 
 # cd to this script's directory
 X=$(command -v "$0")
-cd "${X%${X##*/}}."
+cd "${X%"${X##*/}"}."
 
 : "${OPENSCAD_CMD=openscad}"
 COLORSCAD=$(pwd)/../colorscad.sh
@@ -12,6 +15,8 @@ COLORSCAD=$(pwd)/../colorscad.sh
 # temp dir; on i.e. Ubuntu, openscad can be a snap package which doesn't have access to /tmp/
 TEMPDIR_REL=$(mktemp -d ./tmp.XXXXXX)
 TEMPDIR="$(pwd)/${TEMPDIR_REL}"
+# shellcheck disable=SC2064
+# this SHOULD expand now
 trap "'${OPENSCAD_CMD}' --info 2>&1 | grep '^OpenSCAD Version: '; rm -Rf '$TEMPDIR'" EXIT
 
 SKIP_3MF=0
@@ -86,28 +91,30 @@ function canonicalize_amf {
 	local IN=$1
 	local OUT_DIR=$2
 
+	[[ -d "$OUT_DIR" ]] || mkdir "$OUT_DIR"
 	# Split input in one object per line, then loop over each object
-	cat "$IN" | tr -d '\r\n ' | sed 's#<object#\'$'\n''&#g' | while read OBJECT; do
+	tr -d '\r\n ' < "$IN" | sed 's#<object#\n&#g' | while read -r OBJECT; do
 		# Split object in lines, so each triangle and vertex is on its own line
-		local OBJECT=$(echo "$OBJECT" | sed -E 's#<(triangle|/volume|vertex|/vertices)#\'$'\n''&#g')
+		OBJECT=$(echo "$OBJECT" | sed -E 's#<(triangle|/volume|vertex|/vertices)#\n&#g')
 		[ -n "$OBJECT" ]
 		# The model contains vertices, plus triangles that index the vertices.
 		# The vertices are in non-deterministic order, so they need to be sorted.
 		# That obviously changes the triangle indices, so first replace these indices with coordinates.
 		# 1) Store all vertices in an array
-		local VERTICES=($(echo "$OBJECT" | grep '<vertex>' || true))
+		local VERTICES
+		IFS=$'\n' read -r -d '' -a VERTICES < <(echo "$OBJECT" | grep '<vertex>' || true) || true
 		# 2) Loop over each triangle, replacing the index of triangles with the vertex definition
 		echo "$OBJECT" | grep '<triangle>' \
 				| sed -E 's#<triangle><v1>(.*)</v1><v2>(.*)</v2><v3>(.*)</v3></triangle>#\1 \2 \3#g' \
-				| while read TRIANGLE; do
+				| while read -r TRIANGLE; do
 			echo -n "<triangle>"
 			for i in ${TRIANGLE}; do
 				echo -n "${VERTICES[$i]}"
 			done
 			echo "</triangle>"
-		done | sort
+		done | sort -s
 		# 3) Output the non-triangle lines, sorted
-		echo "$OBJECT" | grep -v '<triangle>' | sort
+		echo "$OBJECT" | grep -v '<triangle>' | sort -s
 	done > "${OUT_DIR}/model.amf"
 }
 
@@ -130,6 +137,10 @@ function test_render {
 		echo "  Skipping 3MF test"
 		return
 	fi
+	if [ "$FORMAT" != 3mf ] && [ "$FORMAT" != amf ]; then
+		echo "Format '${FORMAT}' unsupported"
+		return 1
+	fi
 
 	# Generate output
 	local OUTPUT="${TEMPDIR}/output.${FORMAT}"
@@ -149,16 +160,8 @@ function test_render {
 	rm -Rf "${TEMPDIR}/exp" "${TEMPDIR}/out"
 	mkdir "${TEMPDIR}/exp" "${TEMPDIR}/out"
 	#trap 'rm -Rf "${TEMPDIR}/exp" "${TEMPDIR}/out"' RETURN
-	if [ $FORMAT = 3mf ]; then
-		canonicalize_3mf "$EXPECTED" "${TEMPDIR}/exp"
-		canonicalize_3mf "$OUTPUT" "${TEMPDIR}/out"
-	elif [ $FORMAT = amf ]; then
-		canonicalize_amf "$EXPECTED" "${TEMPDIR}/exp"
-		canonicalize_amf "$OUTPUT" "${TEMPDIR}/out"
-	else
-		echo "Format '${FORMAT}' unsupported"
-		return 1
-	fi
+	canonicalize_"${FORMAT}" "$EXPECTED" "${TEMPDIR}/exp"
+	canonicalize_"${FORMAT}" "$OUTPUT" "${TEMPDIR}/out"
 
 	# Compare
 	diff -wur "${TEMPDIR}/exp" "${TEMPDIR}/out"
@@ -235,15 +238,17 @@ for x in test_*.scad "${TEMPDIR_REL}"/test_subdir/*.scad; do
 	if [ "$NAME" = test_boolean ] && [ $OLD_BOOLEAN -ne 0 ]; then
 		EXPECTATION+='.2019.05'
 	fi
-	test_render ${NAME}.scad expectations/${EXPECTATION}.3mf
-	test_render ${NAME}.scad expectations/${EXPECTATION}.amf
+	for EXT in 3mf amf; do
+		test_render "${NAME}.scad" expectations/"${EXPECTATION}.${EXT}"
+	done
 done
 
 # Finally, rerun two tests with a different current directory
 cd "$TEMPDIR"
 for NAME in test_color_args test_import; do
-	test_render ../${NAME}.scad ../expectations/${NAME}.3mf
-	test_render ../${NAME}.scad ../expectations/${NAME}.amf
+	for EXT in 3mf amf; do
+		test_render ../${NAME}.scad ../expectations/${NAME}.${EXT}
+	done
 done
 
 
