@@ -12,6 +12,7 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 ### Fixed
 
 - Small improvement to "-h": highlight need to pass an extra argument.
+- Clean up and add shellcheck validation for `test/run.sh`.
 
 ### Fixed - 3mfmerge
 
