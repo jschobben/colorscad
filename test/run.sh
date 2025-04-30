@@ -34,7 +34,12 @@ done
 
 # Same as 'grep -q', without triggering broken pipe errors due to early exit
 function grep_q {
-	grep "$@" > /dev/null
+	local INPUT
+	INPUT=$(cat)
+	if ! grep "$@" <<<"$INPUT" > /dev/null; then
+		echo -e "Unexpected message:\n\t'${INPUT}'\nExpecting:\n\t'$*'" >&2
+		false
+	fi
 }
 
 
