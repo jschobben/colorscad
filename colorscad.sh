@@ -17,6 +17,8 @@ Options
   -h      This message you are reading
   -i ARG  Input file
   -j ARG  Maximum number of parallel jobs to use: defaults to 8, reduce if you're low on RAM
+  -k ARG  Keep intermediate per-color models in the given directory; this directory must not yet exist,
+          and its parent directory must be writable by this script.
   -o ARG  Output file: it must not yet exist (unless option -f is used),
           and must have as extension either '.amf' or '.3mf'
   -v      Verbose logging: mostly, this enables the OpenSCAD rendering stats output (default disabled)
@@ -32,10 +34,11 @@ EOF
 
 FORCE=0
 INPUT=
+INTERMEDIATES_DIR=
 OUTPUT=
 PARALLEL_JOB_LIMIT=8
 VERBOSE=0
-while getopts :fhi:j:o:v opt; do
+while getopts :fhi:j:k:o:v opt; do
 	case "$opt" in
 		f)
 			FORCE=1;
@@ -53,6 +56,13 @@ while getopts :fhi:j:o:v opt; do
 		;;
 		j)
 			PARALLEL_JOB_LIMIT="$OPTARG"
+		;;
+		k)
+			INTERMEDIATES_DIR="$OPTARG"
+			if [[ -d "$INTERMEDIATES_DIR" ]]; then
+				echo "Error: intermediates directory '$INTERMEDIATES_DIR' already exists" >&2
+				exit 1
+			fi
 		;;
 		o)
 			if [ -n "$OUTPUT" ]; then
@@ -174,6 +184,9 @@ INPUT_CSG=$(
 # Working directory. Use a dir relative to the input dir, because openscad might not have access to
 # the default temp dir; on i.e. Ubuntu, openscad can be a snap package which doesn't have access to /tmp/
 TEMPDIR=$(mktemp -d ./tmp.XXXXXX)
+# Intermediates dir; will be moved later to INTERMEDIATES_DIR, if enabled
+mkdir "${TEMPDIR}/intermediates"
+
 # Cleanup trigger
 # shellcheck disable=SC2064
 # this SHOULD expand now
@@ -240,13 +253,13 @@ echo
 echo "Create a separate .${FORMAT} file for each color"
 
 # Render INPUT_CSG, but only process geometry for the given color.
-# Output is written to "$TEMPDIR/$COLOR.$FORMAT".
+# Output is written to "${TEMPDIR}/intermediates/$COLOR.$FORMAT".
 # Variables INPUT_CSG, FORMAT and TEMPDIR should be defined.
 function render_color {
 	local COLOR=$1
 
 	{
-		local OUT_FILE="${TEMPDIR}/${COLOR}.${FORMAT}"
+		local OUT_FILE="${TEMPDIR}/intermediates/${COLOR}.${FORMAT}"
 		echo "Starting"
 		local EXTRA_ARGS=
 		if [ $VERBOSE -ne 1 ]; then
@@ -298,11 +311,11 @@ if [ "$FORMAT" = amf ]; then
 		id=0
 		IFS=$'\n'
 		for COLOR in $COLORS; do
-			if grep -q -m 1 object "${TEMPDIR}/${COLOR}.amf"; then
+			if grep -q -m 1 object "${TEMPDIR}/intermediates/${COLOR}.amf"; then
 				echo " <object id=\"${id}\">"
 				# Crudely skip the AMF header/footer; assume there is exactly one "<object>" tag and keep only its contents.
 				# At the same time, set the volume's material ID, and output the result.
-				sed "1,4 d; \$ d; s/<volume>/<volume materialid=\"${id}\">/" "${TEMPDIR}/${COLOR}.amf"
+				sed "1,4 d; \$ d; s/<volume>/<volume materialid=\"${id}\">/" "${TEMPDIR}/intermediates/${COLOR}.amf"
 			else
 				echo "Skipping ${COLOR}!" >&2
 				(( SKIPPED++ ))
@@ -325,22 +338,31 @@ if [ "$FORMAT" = amf ]; then
 		MERGE_STATUS=1
 	fi
 elif [ "$FORMAT" = 3mf ]; then
-	# Run from inside TEMPDIR, to support having a Windows-format 3mfmerge binary
+	# Run from inside TEMPDIR/intermediates, to support having a Windows-format 3mfmerge binary
 	(
-		cd "$TEMPDIR" || exit 1
+		cd "${TEMPDIR}/intermediates" || exit 1
 		# shellcheck disable=SC2001
 		"${BIN_3MFMERGE}" merged.3mf < \
 		  <(echo "$COLORS" | sed "s/\$/\.${FORMAT}/")
 	)
 	MERGE_STATUS=$?
-	if ! [ -s "${TEMPDIR}"/merged.3mf ]; then
+	if ! [ -s "${TEMPDIR}"/intermediates/merged.3mf ]; then
 		echo "Merging failed, aborting!"
 		exit 1
 	fi
-	mv "${TEMPDIR}"/merged.3mf "$OUTPUT"
+	mv "${TEMPDIR}"/intermediates/merged.3mf "$OUTPUT"
 else
 	echo "Merging of format '${FORMAT}' not yet implemented!"
 	exit 1
+fi
+
+# Move intermediates to requested directory, if applicable
+if [[ -n "$INTERMEDIATES_DIR" ]]; then
+	echo "Keeping intermediates in '${INTERMEDIATES_DIR}'"
+	mv "${TEMPDIR}/intermediates" "$INTERMEDIATES_DIR" || {
+		echo "Unable to move intermediates to '${INTERMEDIATES_DIR}'. Please make sure its parent directory is writable." >&2
+		exit 1
+	}
 fi
 
 echo

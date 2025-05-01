@@ -32,6 +32,17 @@ for ARG in "$@"; do
 done
 
 
+# Windows version of shasum (at least for '-a 256')
+if ! command -v shasum && command -v certutil; then
+	shasum() {
+		[[ "$1" = '-a' && "$2" = '256' ]]
+		cat > "${TEMPDIR}/shasum"
+		certutil -hashfile "${TEMPDIR}/shasum" SHA256 | sed -n 2p
+		rm "${TEMPDIR}/shasum"
+	}
+fi
+
+
 # Same as 'grep -q', without triggering broken pipe errors due to early exit
 function grep_q {
 	local INPUT
@@ -129,8 +140,10 @@ function canonicalize_amf {
 function test_render {
 	local INPUT=$1
 	local EXPECTED=$2
+	shift 2
+	local EXTRA_ARGS=("$@")
 
-	echo "Testing: input=${INPUT} expected=${EXPECTED}"
+	echo "Testing: input=${INPUT} expected=${EXPECTED} extra_args='${EXTRA_ARGS[*]}'"
 
 	if ! [ -e "$INPUT" ] || ! [ -e "$EXPECTED" ]; then
 		echo "Error: could not find all files"
@@ -158,7 +171,7 @@ function test_render {
 			export -f openscad_test_override
 			export OPENSCAD_CMD=openscad_test_override
 		fi
-		${COLORSCAD} -i "$INPUT" -o "$OUTPUT" -j 4 > >(sed 's/^/  /') 2>&1
+		${COLORSCAD} -i "$INPUT" -o "$OUTPUT" -j 4 "${EXTRA_ARGS[@]}" > >(sed 's/^/  /') 2>&1
 	)
 
 	# Canonicalize the expectation and output, so they can be compared
@@ -224,6 +237,11 @@ echo "Testing bad weather:"
 	${COLORSCAD} -i syntax_error.scad -o output.amf 2>&1 | grep_q "the produced file 'tmp\..*\.csg' is empty"
 	echo '' > empty.scad
 	${COLORSCAD} -i empty.scad -o output.amf | grep_q 'no colors were found at all'
+	mkdir existing_dir
+	${COLORSCAD} -i color.scad -o output.amf -k existing_dir 2>&1 \
+	| grep_q "Error: intermediates directory 'existing_dir' already exists"
+	${COLORSCAD} -i color.scad -o output.amf -k nonexisting/sub_dir 2>&1 \
+	| grep_q "Unable to move intermediates to 'nonexisting/sub_dir'. Please make sure its parent directory is writable."
 )
 echo "Bad weather tests all passed."
 
@@ -245,6 +263,35 @@ for x in test_*.scad "${TEMPDIR_REL}"/test_subdir/*.scad; do
 	fi
 	for EXT in 3mf amf; do
 		test_render "${NAME}.scad" expectations/"${EXPECTATION}.${EXT}"
+	done
+done
+
+for NAME in test_color_args test_import; do
+	for EXT in 3mf amf; do
+		OUTPUT=${NAME}.${EXT}
+		INTERMEDIATES="${TEMPDIR}"/${OUTPUT}_intermediates
+		test_render ${NAME}.scad expectations/${OUTPUT} -k "$INTERMEDIATES"
+		# Check intermediate filenames (contents vary too much pre-3mfmerging)
+		if [ $EXT != 3mf ] || [ $SKIP_3MF -eq 0 ]; then
+			HASH=$(
+				cd "$INTERMEDIATES"
+				find . -type f \
+				| LC_ALL=C sort -s \
+				| shasum -a 256 \
+				| cut -b 1-16
+			)
+			case "$OUTPUT" in
+				test_color_args.3mf) EXPECTED=da5bc9e62064c8c7;;
+				test_color_args.amf) EXPECTED=9c957489e9fa6d28;;
+				test_import.3mf) EXPECTED=386124a872a5025b;;
+				test_import.amf) EXPECTED=04f11ac02bfd5859;;
+				*) false
+			esac
+			if [[ "$HASH" != "$EXPECTED" ]]; then
+				echo "Intermediates for ${OUTPUT} have unexpected hash, expecting ${EXPECTED} but was ${HASH}" >&2
+				false
+			fi
+		fi
 	done
 done
 
