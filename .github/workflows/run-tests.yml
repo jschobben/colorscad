@@ -59,6 +59,8 @@ jobs:
             apt-key: https://files.openscad.org/OBS-Repository-Key.pub
             apt-repo: https://download.opensuse.org/repositories/home:/t-paul/xUbuntu_22.04/
             apt: openscad-nightly
+            # As of 17 may 2025, this build appears to be stale
+            skip-age-check: true
           - name: Ubuntu nightly on latest
             runner: ubuntu-latest
             apt-key: https://files.openscad.org/OBS-Repository-Key.pub
@@ -152,7 +154,7 @@ jobs:
           fi
 
       - name: OpenSCAD nightly age check
-        if: contains(matrix.name, 'nightly')
+        if: contains(matrix.name, 'nightly') && !matrix.skip-age-check
         run: |
           V=$(openscad --version 2>&1 | sed -n 's/^OpenSCAD version // p')
           IFS=. read Y M D x <<<"$V"
