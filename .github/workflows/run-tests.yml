@@ -200,6 +200,8 @@ jobs:
           WORKERS=
           if [[ "$(uname -s)" = Darwin ]]; then WORKERS=2; fi
           cmake --build . --parallel ${WORKERS}
+          # Meanwhile let's also verify the "install" step works; installed files aren't actually used further on here
+          cmake --install . || sudo cmake --install .
         working-directory: 3mfmerge
 
       - name: Run tests
