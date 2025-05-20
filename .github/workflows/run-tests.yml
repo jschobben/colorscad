@@ -196,7 +196,10 @@ jobs:
           mkdir build
           cd build
           cmake .. -DLIB3MF_TESTS=OFF
-          cmake --build . --parallel
+          # Limit workers to 2 for macos, as GHA's macos runner gets overloaded and very slow otherwise
+          WORKERS=
+          if [[ "$(uname -s)" = Darwin ]]; then WORKERS=2; fi
+          cmake --build . --parallel ${WORKERS}
         working-directory: 3mfmerge
 
       - name: Run tests

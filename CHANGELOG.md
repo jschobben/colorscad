@@ -21,6 +21,7 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 ### Fixed - 3mfmerge
 
 - Add workaround for CMake 4.0 dropping support for Lib3MF's use of CMake 3.0.
+- CI: avoid overload of GHA macos runner
 
 ## [0.6.2] - 2025-03-30
 
