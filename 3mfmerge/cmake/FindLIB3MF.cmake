@@ -49,6 +49,7 @@ else()
     lib3mf
     URL https://github.com/3MFConsortium/lib3mf/archive/refs/tags/v${LIB3MF_VERSION}.tar.gz
     URL_HASH SHA256=${LIB3MF_TARBALL_HASH}
+    PATCH_COMMAND git apply --ignore-whitespace ${CMAKE_CURRENT_SOURCE_DIR}/patches/lib3mf_fix_lib3mf.pc_path.patch
   )
   # LIB3MF's tests reference submodule dependencies, not included in the tarball
   option(LIB3MF_TESTS OFF)
