@@ -1,0 +1,8 @@
+{
+  "name": "colorscad",
+  "version": "1.0.0",
+  "builtin-baseline": "8f54ef5453e7e76ff01e15988bf243e7247c5eb5",
+  "dependencies": [
+    { "name": "lib3mf", "version>=": "2.4.1" }
+  ]
+}
