@@ -196,7 +196,6 @@ jobs:
             echo "::error::Cached bin/3mfmerge is troublesome, failing the job so it can be investigated"
             exit 1
           fi
-          ls -lR
           mkdir build
           cd build
           cmake ..
