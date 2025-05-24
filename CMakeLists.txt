@@ -4,38 +4,30 @@ cmake_minimum_required(VERSION 3.14...3.28)
 #  AUTO-BOOTSTRAP VCPKG & SET TOOLCHAIN
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Path to the vcpkg submodule
+# Set the path to vcpkg submodule
 set(VCPKG_DIR "${CMAKE_SOURCE_DIR}/vcpkg")
 
-# Only proceed if the vcpkg toolchain file is present
-if(EXISTS "${VCPKG_DIR}/scripts/buildsystems/vcpkg.cmake")
-
-    # Bootstrap vcpkg once if the executable is missing
-    if(NOT EXISTS "${VCPKG_DIR}/vcpkg" AND NOT EXISTS "${VCPKG_DIR}/vcpkg.exe")
-        message(STATUS "Bootstrapping vcpkg in ${VCPKG_DIR}...")
+# Bootstrap vcpkg if needed
+if (NOT EXISTS "${VCPKG_DIR}/vcpkg")
+    message(STATUS "Bootstrapping vcpkg...")
+    if (UNIX)
         execute_process(
-                COMMAND ${CMAKE_COMMAND}
-                -P "${VCPKG_DIR}/scripts/buildsystems/bootstrap.cmake"
-                WORKING_DIRECTORY "${VCPKG_DIR}"
-                RESULT_VARIABLE _vcpkg_bootstrap_result
-                OUTPUT_QUIET
-                ERROR_QUIET
+                COMMAND ${CMAKE_COMMAND} -E env bash "${VCPKG_DIR}/bootstrap-vcpkg.sh"
+                WORKING_DIRECTORY ${VCPKG_DIR}
         )
-        if(NOT _vcpkg_bootstrap_result EQUAL 0)
-            message(FATAL_ERROR
-                    "vcpkg bootstrap failed (exit code ${_vcpkg_bootstrap_result})")
-        endif()
-        message(STATUS "vcpkg bootstrapped successfully")
+    elseif (WIN32)
+        execute_process(
+                COMMAND "${VCPKG_DIR}/bootstrap-vcpkg.bat"
+                WORKING_DIRECTORY ${VCPKG_DIR}
+        )
     endif()
+endif()
 
-    # Tell CMake to use the vcpkg toolchain for all find_package() calls
-    set(CMAKE_TOOLCHAIN_FILE
-            "${VCPKG_DIR}/scripts/buildsystems/vcpkg.cmake"
-            CACHE STRING "Vcpkg toolchain file" FORCE)
-
+# Set vcpkg toolchain file for CMake to use
+if (EXISTS "${VCPKG_DIR}/scripts/buildsystems/vcpkg.cmake")
+    set(CMAKE_TOOLCHAIN_FILE "${VCPKG_DIR}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
 else()
-    message(FATAL_ERROR
-            "Could not find vcpkg toolchain file in ${VCPKG_DIR}/scripts/buildsystems")
+    message(FATAL_ERROR "vcpkg failed to bootstrap or install packages.")
 endif()
 
 # ─────────────────────────────────────────────────────────────────────────────
