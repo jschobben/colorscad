@@ -198,13 +198,13 @@ jobs:
           fi
           mkdir build
           cd build
-          cmake ..
+          cmake .. -DCMAKE_BUILD_TYPE=Release
           # Limit workers to 2 for macos, as GHA's macos runner gets overloaded and very slow otherwise
           WORKERS=
           if [[ "$(uname -s)" = Darwin ]]; then WORKERS=2; fi
-          cmake --build . --parallel ${WORKERS}
+          cmake --build . --config Release --parallel ${WORKERS}
           # Meanwhile let's also verify the "install" step works; installed files aren't actually used further on here
-          cmake --install . || sudo cmake --install .
+          cmake --install . --config Release || sudo cmake --install .
 
       - name: Run tests
         run: |
