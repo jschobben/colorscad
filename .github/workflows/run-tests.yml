@@ -208,6 +208,7 @@ jobs:
 
       - name: Run tests
         run: |
+          ls -lR ../3mfmerge
           ./run.sh ${{ matrix.test-params }}
         working-directory: test
 
