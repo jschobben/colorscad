@@ -206,6 +206,23 @@ jobs:
           # Meanwhile let's also verify the "install" step works; installed files aren't actually used further on here
           cmake --install . --config Release || sudo cmake --install .
 
+      - name: Fix Windows bin layout
+        if: runner.os == 'Windows'
+        run: |
+          cd 3mfmerge/bin
+      
+          # 1) Move the EXE up if it only lives in Release/
+          if [[ ! -f 3mfmerge.exe && -f Release/3mfmerge.exe ]]; then
+            mv Release/3mfmerge.exe .
+            echo "Moved EXE: Release/3mfmerge.exe → 3mfmerge/bin/"
+          fi
+      
+          # 2) Copy all DLLs from Release/ into bin/
+          if compgen -G "Release/*.dll" > /dev/null; then
+            cp Release/*.dll .
+            echo "Copied DLLs: Release/*.dll → 3mfmerge/bin/"
+          fi
+
       - name: Run tests
         run: |
           ls -lR ../3mfmerge
