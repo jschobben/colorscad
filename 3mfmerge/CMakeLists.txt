@@ -1,24 +1,30 @@
 cmake_minimum_required(VERSION 3.14...3.28)
+project(3mfmerge LANGUAGES CXX)
 
-project(3mfmerge)
+# Output binaries into ./bin (all configurations)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
-# The generator expression $<0:> at the end, is only there to prevent multi-config generators such
-# as MSVC's nmake from adding 'Debug' and the like
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin$<0:>)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin$<0:>)
-
-set(CMAKE_CXX_STANDARD 11)
+# Enforce C++11
+set(CMAKE_CXX_STANDARD      11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_EXTENSIONS    OFF)
 
-include(FetchContent)
-set(FETCHCONTENT_QUIET FALSE)
+# Find lib3mf (installed via vcpkg manifest in the superproject)
+find_package(lib3mf CONFIG REQUIRED)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+# Build
+add_executable(${PROJECT_NAME}
+        3mfmerge.cpp
+)
+target_link_libraries(${PROJECT_NAME}
+        PRIVATE lib3mf::lib3mf
+)
 
-find_package(LIB3MF 2)
+# Install
+install(TARGETS ${PROJECT_NAME}
+        RUNTIME DESTINATION bin
+)
 
-add_executable(${PROJECT_NAME} 3mfmerge.cpp)
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
-target_link_libraries(${PROJECT_NAME} PRIVATE lib3mf)
-install(TARGETS ${PROJECT_NAME})
+# Copy lib3mf’s runtime libraries alongside the executable
+copy_lib3mf_libraries(${PROJECT_NAME})
