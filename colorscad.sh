@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -o errexit -o errtrace -o nounset -o pipefail
+trap 'echo "Error $? at $0:$LINENO" >&2' ERR
 
 # Get this script's directory
 DIR_SCRIPT="$(
@@ -84,10 +86,10 @@ done
 shift "$((OPTIND-1))"
 OPENSCAD_EXTRA=("$@")
 
-if [ -n "$OPENSCAD_CMD" ]; then
-	echo "OpenSCAD binary in use: $(command -v "$OPENSCAD_CMD")"
+if [ -n "${OPENSCAD_CMD-}" ]; then
+	echo "OpenSCAD binary in use: $(command -v "$OPENSCAD_CMD" || true)"
 fi
-: "${OPENSCAD_CMD=openscad}"
+: "${OPENSCAD_CMD:=openscad}"
 
 if [ "$(uname)" = Darwin ]; then
 	# BSD sed, as used on macOS, uses a different parameter than GNU sed to enable line-buffered mode
@@ -193,7 +195,7 @@ mkdir "${TEMPDIR}/intermediates"
 trap "rm -Rf '$(pwd)/${INPUT_CSG}' '$(pwd)/${TEMPDIR}'" EXIT
 
 # Convert input to a .csg file, mainly to resolve named colors. Also to evaluate functions etc. only once.
-"$OPENSCAD_CMD" "$INPUT" -o "$INPUT_CSG" "${OPENSCAD_EXTRA[@]}"
+"$OPENSCAD_CMD" "$INPUT" -o "$INPUT_CSG" ${OPENSCAD_EXTRA[@]+"${OPENSCAD_EXTRA[@]}"}
 
 if ! [ -s "$INPUT_CSG" ]; then
 	echo "Error: the produced file '$INPUT_CSG' is empty. Looks like something went wrong..."
@@ -208,7 +210,7 @@ echo "Get list of used colors"
 # means more geometry; we want to start the biggest jobs first to improve parallelism.
 COLOR_ID_TAG="colorid_$$_${RANDOM}"
 COLORS=$(
-	"$OPENSCAD_CMD" "$INPUT_CSG" -o "${TEMPDIR}/no_color.stl" -D "module color(c) {echo(${COLOR_ID_TAG}=str(c));}" 2>&1 |
+	{ "$OPENSCAD_CMD" "$INPUT_CSG" -o "${TEMPDIR}/no_color.stl" -D "module color(c) {echo(${COLOR_ID_TAG}=str(c));}" 2>&1 || echo FIXME2 > /dev/tty; } |
 	tr -d '\r"' |
 	sed -n "s/^ECHO: ${COLOR_ID_TAG} = // p" |
 	sort |
@@ -225,7 +227,7 @@ if [ -s "${TEMPDIR}/no_color.stl" ]; then
 	echo "For a stacktrace, try running:"
 	echo -n "  openscad"
 	# Output quoted version of OPENSCAD_EXTRA, but exclude certain parameters that may confuse the stacktrace
-	for PARAM in "${OPENSCAD_EXTRA[@]}"; do
+	for PARAM in ${OPENSCAD_EXTRA[@]+"${OPENSCAD_EXTRA[@]}"}; do
 		[ "$PARAM" = --hardwarnings ] && continue
 		printf ' %q' "$PARAM"
 	done
@@ -265,10 +267,13 @@ function render_color {
 		if [ $VERBOSE -ne 1 ]; then
 			EXTRA_ARGS=--quiet
 		fi
-		"$OPENSCAD_CMD" "$INPUT_CSG" -o "$OUT_FILE" $EXTRA_ARGS -D "\$colored = false; module color(c) {if (\$colored) {children();} else {\$colored = true; if (str(c) == \"${COLOR}\") children();}}"
+		"$OPENSCAD_CMD" "$INPUT_CSG" -o "$OUT_FILE" $EXTRA_ARGS -D "\$colored = false; module color(c) {if (\$colored) {children();} else {\$colored = true; if (str(c) == \"${COLOR}\") children();}}" || {
+			echo "Warning: OpenSCAD failed with error $? when trying to generate '$OUT_FILE'. Proceeding regardless..."
+			# Don't treat this as fatal error, the model might just contain no geometry for this color
+		}
 		if [ -s "$OUT_FILE" ]; then
 			echo "Finished at ${OUT_FILE}"
-		else
+		elif [ -e "$OUT_FILE" ]; then
 			echo "Warning: output is empty, removing it!"
 			rm "$OUT_FILE"
 		fi
@@ -278,7 +283,7 @@ function render_color {
 IFS=$'\n'
 JOB_ID=0
 for COLOR in $COLORS; do
-	(( JOB_ID++ ))
+	(( JOB_ID++ )) || true
 	if [ "$(jobs | wc -l)" -ge "$PARALLEL_JOB_LIMIT" ]; then
 		# Wait for one job to finish, before continuing
 		wait_n
@@ -306,7 +311,7 @@ if [ "$FORMAT" = amf ]; then
 		for COLOR in $COLORS; do
 			IFS=, read -r R G B A <<<"${COLOR//[\[\] ]/}"
 			echo " <material id=\"${id}\"><color><r>${R}</r><g>${G}</g><b>${B}</b><a>${A}</a></color></material>"
-			(( id++ ))
+			(( id++ )) || true
 		done
 		id=0
 		IFS=$'\n'
@@ -318,9 +323,9 @@ if [ "$FORMAT" = amf ]; then
 				sed "1,4 d; \$ d; s/<volume>/<volume materialid=\"${id}\">/" "${TEMPDIR}/intermediates/${COLOR}.amf"
 			else
 				echo "Skipping ${COLOR}!" >&2
-				(( SKIPPED++ ))
+				(( SKIPPED++ )) || true
 			fi
-			(( id++ ))
+			(( id++ )) || true
 			echo -ne "\r  ${id}/${COLOR_COUNT} " >&2
 		done
 		echo '</amf>'
@@ -344,8 +349,7 @@ elif [ "$FORMAT" = 3mf ]; then
 		# shellcheck disable=SC2001
 		"${BIN_3MFMERGE}" merged.3mf < \
 		  <(echo "$COLORS" | sed "s/\$/\.${FORMAT}/")
-	)
-	MERGE_STATUS=$?
+	) || MERGE_STATUS=$?
 	if ! [ -s "${TEMPDIR}"/intermediates/merged.3mf ]; then
 		echo "Merging failed, aborting!"
 		exit 1
