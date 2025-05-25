@@ -9,6 +9,10 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+### Fixed
+
+- Improve code quality: mainly better error handling in colorscad.sh
+
 ### Added
 
 - Add option '-k' to allow keeping intermediate per-color models in a specified directory.
