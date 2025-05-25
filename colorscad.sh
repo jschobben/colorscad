@@ -209,7 +209,17 @@ echo "Get list of used colors"
 # means more geometry; we want to start the biggest jobs first to improve parallelism.
 COLOR_ID_TAG="colorid_$$_${RANDOM}"
 COLORS=$(
-	{ "$OPENSCAD_CMD" "$INPUT_CSG" -o "${TEMPDIR}/no_color.stl" -D "module color(c) {echo(${COLOR_ID_TAG}=str(c));}" 2>&1 || echo FIXME2 > /dev/tty; } |
+	# If the model is designed properly, all geometry has been assigned a color, which means the "no_color.stl" produced here is empty.
+	# Therefore this command is supposed to return a non-zero exit status, i.e. fail, which should be ignored.
+	OPENSCAD_OUTPUT=$("$OPENSCAD_CMD" "$INPUT_CSG" -o "${TEMPDIR}/no_color.stl" -D "module color(c) {echo(${COLOR_ID_TAG}=str(c));}" 2>&1 || true)
+	# Furthermore OpenSCAD's "echo" output goes to stderr, so we've had to capture that above.
+	# To still show some useful output in case there's an actual problem, just display the output minus any ECHOs and the expected error message.
+	# OpenSCAD should normally not output any statistics in case of an error, so no other output is expected.
+	echo "$OPENSCAD_OUTPUT" \
+	| { grep -Ev "^ECHO: |^Current top level object is empty\.$" || true; } \
+	| sed 's/^/Unexpected OpenSCAD output: /' >&2
+	# Finally, process the color-related ECHOs.
+	echo "$OPENSCAD_OUTPUT" |
 	tr -d '\r"' |
 	sed -n "s/^ECHO: ${COLOR_ID_TAG} = // p" |
 	sort |
