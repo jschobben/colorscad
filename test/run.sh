@@ -216,7 +216,7 @@ echo "Testing bad weather:"
 	${COLORSCAD} -i color.scad -o wrong.ext | grep_q "the output file's extension must be one of 'amf' or '3mf'"
 	(
 		function command {
-			if [ "$1" = -v ] && [ "$2" = "$OPENSCAD_CMD" ]; then return 1; fi
+			if [ "$1" = -v ] && [ "$2" = "${OPENSCAD_CMD-}" ]; then return 1; fi
 			builtin command "$@"
 		}
 		export -f command
@@ -234,7 +234,7 @@ echo "Testing bad weather:"
 		${COLORSCAD} -i color.scad -o output.3mf | grep_q 'Warning: your openscad version does not seem to have 3MF support'
 	)
 	echo 'cheese' > syntax_error.scad
-	${COLORSCAD} -i syntax_error.scad -o output.amf 2>&1 | grep_q "the produced file 'tmp\..*\.csg' is empty"
+	${COLORSCAD} -i syntax_error.scad -o output.amf 2>&1 | grep_q "ERROR: Parser error.*: syntax error"
 	echo '' > empty.scad
 	${COLORSCAD} -i empty.scad -o output.amf | grep_q 'no colors were found at all'
 	mkdir existing_dir
