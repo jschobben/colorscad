@@ -48,11 +48,12 @@ function grep_q {
 	grep "$@" > /dev/null
 }
 
+# Verifies that stdin is as expected. The regex works in 's' mode (match newlines using '\\n').
 function expect_stdin {
 	local REGEX=$1
 	local INPUT
-	INPUT=$(cat)
-	if ! grep_q "$REGEX" <<<"$INPUT"; then
+	INPUT=$(cat | sed 's/$/\\n/g' | tr -d '\r\n')
+	if ! grep_q -E "$REGEX" <<<"$INPUT"; then
 		echo -e "Unexpected message:\n\t'${INPUT}'\nExpecting:\n\t'${REGEX}'" >&2
 		false
 	fi
@@ -215,7 +216,7 @@ echo "Testing bad weather:"
 	${COLORSCAD} -o output.amf | expect_stdin 'You must provide both'
 	${COLORSCAD} -i missing.scad -o output.amf | expect_stdin "Input 'missing.scad' does not exist"
 	echo 'cube();' > no_color.scad
-	${COLORSCAD} -i no_color.scad -o output.amf | expect_stdin 'some geometry is not wrapped'
+	${COLORSCAD} -i no_color.scad -o output.amf 2>&1 | expect_stdin 'Unexpected OpenSCAD output:.*\\nFatal error: some geometry is not wrapped'
 	touch existing.amf
 	${COLORSCAD} -i color.scad -o existing.amf | expect_stdin "Output 'existing.amf' already exists"
 	${COLORSCAD} -i color.scad -o wrong.ext | expect_stdin "the output file's extension must be one of 'amf' or '3mf'"
@@ -241,7 +242,7 @@ echo "Testing bad weather:"
 	echo 'cheese' > syntax_error.scad
 	${COLORSCAD} -i syntax_error.scad -o output.amf 2>&1 | expect_stdin "ERROR: Parser error.*: syntax error"
 	echo '' > empty.scad
-	${COLORSCAD} -i empty.scad -o output.amf | expect_stdin 'no colors were found at all'
+	${COLORSCAD} -i empty.scad -o output.amf 2>&1 | expect_stdin 'Error: no colors were found at all'
 	mkdir existing_dir
 	${COLORSCAD} -i color.scad -o output.amf -k existing_dir 2>&1 \
 	| expect_stdin "Error: intermediates directory 'existing_dir' already exists"
