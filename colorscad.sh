@@ -87,9 +87,13 @@ shift "$((OPTIND-1))"
 OPENSCAD_EXTRA=("$@")
 
 if [ -n "${OPENSCAD_CMD-}" ]; then
-	echo "OpenSCAD binary in use: $(command -v "$OPENSCAD_CMD" || true)"
+	echo "OpenSCAD binary in use, overridden via OPENSCAD_CMD: $(command -v "$OPENSCAD_CMD" || echo "not found ('${OPENSCAD_CMD}')")"
 fi
 : "${OPENSCAD_CMD:=openscad}"
+if ! command -v "$OPENSCAD_CMD" &> /dev/null; then
+	echo "Error: ${OPENSCAD_CMD} command not found! Make sure it's in your PATH."
+	exit 1
+fi
 
 if [ "$(uname)" = Darwin ]; then
 	# BSD sed, as used on macOS, uses a different parameter than GNU sed to enable line-buffered mode
@@ -139,11 +143,6 @@ fi
 FORMAT=${OUTPUT##*.}
 if [ "$FORMAT" != amf ] && [ "$FORMAT" != 3mf ]; then
 	echo "Error: the output file's extension must be one of 'amf' or '3mf', but it is '$FORMAT'."
-	exit 1
-fi
-
-if ! command -v "$OPENSCAD_CMD" &> /dev/null; then
-	echo "Error: ${OPENSCAD_CMD} command not found! Make sure it's in your PATH."
 	exit 1
 fi
 
