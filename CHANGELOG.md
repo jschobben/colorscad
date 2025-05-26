@@ -9,6 +9,8 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+## [0.7.0] - 2025-05-26
+
 ### Added
 
 - Add option '-k' to allow keeping intermediate per-color models in a specified directory.
@@ -174,7 +176,8 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 - Everything! Only supports creating a colored .amf file.
 
-[Unreleased]: https://github.com/jschobben/colorscad/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/jschobben/colorscad/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/jschobben/colorscad/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/jschobben/colorscad/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/jschobben/colorscad/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/jschobben/colorscad/compare/v0.5.2...v0.6.0
