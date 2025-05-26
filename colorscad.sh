@@ -289,9 +289,8 @@ function render_color {
 	} 2>&1 | sed_u "s/^/${COLOR} /"
 }
 
-IFS=$'\n'
 JOB_ID=0
-for COLOR in $COLORS; do
+while IFS= read -r COLOR; do
 	(( JOB_ID++ )) || true
 	if [ "$(jobs | wc -l)" -ge "$PARALLEL_JOB_LIMIT" ]; then
 		# Wait for one job to finish, before continuing
@@ -299,7 +298,7 @@ for COLOR in $COLORS; do
 	fi
 	# Run job in background, and prefix all terminal output with the job ID and color to show progress
 	render_color "$COLOR" | sed_u "s/^/${JOB_ID}\/${COLOR_COUNT} /" &
-done
+done <<<"$COLORS"
 # Wait for all remaining jobs to finish
 wait
 
@@ -316,15 +315,14 @@ if [ "$FORMAT" = amf ]; then
 		echo '<amf unit="millimeter">'
 		echo ' <metadata type="producer">ColorSCAD</metadata>'
 		id=0
-		IFS=$'\n'
-		for COLOR in $COLORS; do
+		while IFS= read -r COLOR; do
 			IFS=, read -r R G B A <<<"${COLOR//[\[\] ]/}"
 			echo " <material id=\"${id}\"><color><r>${R}</r><g>${G}</g><b>${B}</b><a>${A}</a></color></material>"
 			(( id++ )) || true
-		done
+		done <<<"$COLORS"
 		id=0
 		IFS=$'\n'
-		for COLOR in $COLORS; do
+		while IFS= read -r COLOR; do
 			if grep -q -m 1 object "${TEMPDIR}/intermediates/${COLOR}.amf"; then
 				echo " <object id=\"${id}\">"
 				# Crudely skip the AMF header/footer; assume there is exactly one "<object>" tag and keep only its contents.
@@ -336,7 +334,7 @@ if [ "$FORMAT" = amf ]; then
 			fi
 			(( id++ )) || true
 			echo -ne "\r  ${id}/${COLOR_COUNT} " >&2
-		done
+		done <<<"$COLORS"
 		echo '</amf>'
 	} > "$OUTPUT"
 
