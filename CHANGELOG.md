@@ -11,7 +11,8 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ### Fixed
 
-- Improve code quality: mainly better error handling in colorscad.sh
+- Use 'strict' mode in colorscad.sh, and improve error reporting/script comments
+- Improve clarity/robustness of using OPENSCAD_CMD
 
 ## [0.7.0] - 2025-05-26
 
