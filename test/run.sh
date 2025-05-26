@@ -45,10 +45,16 @@ fi
 
 # Same as 'grep -q', without triggering broken pipe errors due to early exit
 function grep_q {
+	grep "$@" > /dev/null
+}
+
+# Verifies that stdin is as expected. The regex works in 's' mode (match newlines using '\\n').
+function expect_stdin {
+	local REGEX=$1
 	local INPUT
-	INPUT=$(cat)
-	if ! grep "$@" <<<"$INPUT" > /dev/null; then
-		echo -e "Unexpected message:\n\t'${INPUT}'\nExpecting:\n\t'$*'" >&2
+	INPUT=$(cat | sed 's/$/\\n/g' | tr -d '\r\n')
+	if ! grep_q -E "$REGEX" <<<"$INPUT"; then
+		echo -e "Unexpected message:\n\t'${INPUT}'\nExpecting:\n\t'${REGEX}'" >&2
 		false
 	fi
 }
@@ -197,51 +203,51 @@ echo "Testing bad weather:"
 (
 	mkdir "${TEMPDIR}"/nasty
 	cd "${TEMPDIR}"/nasty
-	${COLORSCAD} -i input -i input | grep_q "Error: '-i' specified more than once"
-	${COLORSCAD} -o output -o output | grep_q "Error: '-o' specified more than once"
+	${COLORSCAD} -i input -i input | expect_stdin "Error: '-i' specified more than once"
+	${COLORSCAD} -o output -o output | expect_stdin "Error: '-o' specified more than once"
 	(
 		function sort { [ "$1" != --version ]; }
 		export -f sort
-		${COLORSCAD} | grep_q "your 'sort' command appears to be the wrong one"
+		${COLORSCAD} | expect_stdin "your 'sort' command appears to be the wrong one"
 	)
-	${COLORSCAD} | grep_q 'You must provide both'
+	${COLORSCAD} | expect_stdin 'You must provide both'
 	echo 'color("red") cube();' > color.scad
-	${COLORSCAD} -i color.scad | grep_q 'You must provide both'
-	${COLORSCAD} -o output.amf | grep_q 'You must provide both'
-	${COLORSCAD} -i missing.scad -o output.amf | grep_q "Input 'missing.scad' does not exist"
+	${COLORSCAD} -i color.scad | expect_stdin 'You must provide both'
+	${COLORSCAD} -o output.amf | expect_stdin 'You must provide both'
+	${COLORSCAD} -i missing.scad -o output.amf | expect_stdin "Input 'missing.scad' does not exist"
 	echo 'cube();' > no_color.scad
-	${COLORSCAD} -i no_color.scad -o output.amf | grep_q 'some geometry is not wrapped'
+	${COLORSCAD} -i no_color.scad -o output.amf 2>&1 | expect_stdin 'Unexpected OpenSCAD output:.*\\nFatal error: some geometry is not wrapped'
 	touch existing.amf
-	${COLORSCAD} -i color.scad -o existing.amf | grep_q "Output 'existing.amf' already exists"
-	${COLORSCAD} -i color.scad -o wrong.ext | grep_q "the output file's extension must be one of 'amf' or '3mf'"
+	${COLORSCAD} -i color.scad -o existing.amf | expect_stdin "Output 'existing.amf' already exists"
+	${COLORSCAD} -i color.scad -o wrong.ext | expect_stdin "the output file's extension must be one of 'amf' or '3mf'"
 	(
 		function command {
-			if [ "$1" = -v ] && [ "$2" = "$OPENSCAD_CMD" ]; then return 1; fi
+			if [ "$1" = -v ] && [ "$2" = "${OPENSCAD_CMD-}" ]; then return 1; fi
 			builtin command "$@"
 		}
 		export -f command
-		${COLORSCAD} -i color.scad -o output.amf | grep_q "${OPENSCAD_CMD} command not found"
+		${COLORSCAD} -i color.scad -o output.amf | expect_stdin "${OPENSCAD_CMD} command not found"
 	)
-	OPENSCAD_CMD=i_am_not_here ${COLORSCAD} -i color.scad -o output.amf | grep_q 'i_am_not_here command not found'
+	OPENSCAD_CMD=i_am_not_here ${COLORSCAD} -i color.scad -o output.amf | expect_stdin 'i_am_not_here command not found'
 	(
 		trap 'echo "Failure on line $LINENO"; exit 1' ERR
 		# If 'openscad --info' does not list 3mf support, it's a warning (followed by an abort due to this mock not producing output)
 		function openscad_test_override { :; }
 		export -f openscad_test_override
 		export OPENSCAD_CMD=openscad_test_override
-		${COLORSCAD} -i color.scad -o output.3mf | grep_q 'Warning: your openscad version does not seem to have 3MF support'
+		${COLORSCAD} -i color.scad -o output.3mf | expect_stdin 'Warning: your openscad version does not seem to have 3MF support'
 		function openscad_test_override { echo "lib3mf version: (not enabled)"; }
-		${COLORSCAD} -i color.scad -o output.3mf | grep_q 'Warning: your openscad version does not seem to have 3MF support'
+		${COLORSCAD} -i color.scad -o output.3mf | expect_stdin 'Warning: your openscad version does not seem to have 3MF support'
 	)
 	echo 'cheese' > syntax_error.scad
-	${COLORSCAD} -i syntax_error.scad -o output.amf 2>&1 | grep_q "the produced file 'tmp\..*\.csg' is empty"
+	${COLORSCAD} -i syntax_error.scad -o output.amf 2>&1 | expect_stdin "ERROR: Parser error.*: syntax error"
 	echo '' > empty.scad
-	${COLORSCAD} -i empty.scad -o output.amf | grep_q 'no colors were found at all'
+	${COLORSCAD} -i empty.scad -o output.amf 2>&1 | expect_stdin 'Error: no colors were found at all'
 	mkdir existing_dir
 	${COLORSCAD} -i color.scad -o output.amf -k existing_dir 2>&1 \
-	| grep_q "Error: intermediates directory 'existing_dir' already exists"
+	| expect_stdin "Error: intermediates directory 'existing_dir' already exists"
 	${COLORSCAD} -i color.scad -o output.amf -k nonexisting/sub_dir 2>&1 \
-	| grep_q "Unable to move intermediates to 'nonexisting/sub_dir'. Please make sure its parent directory is writable."
+	| expect_stdin "Unable to move intermediates to 'nonexisting/sub_dir'. Please make sure its parent directory is writable."
 )
 echo "Bad weather tests all passed."
 

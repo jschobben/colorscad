@@ -9,6 +9,10 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+### Fixed
+
+- Improve code quality: mainly better error handling in colorscad.sh
+
 ## [0.7.0] - 2025-05-26
 
 ### Added
