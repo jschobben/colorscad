@@ -15,21 +15,63 @@ AMF export should work with OpenSCAD version 2015.03, but was mostly tested on 2
 Platform-wise, it should run anywhere Bash runs (that includes i.e. cygwin).
 No assumptions are made about OS-specific directories, such as /tmp/ and the like.
 
-The platform-native OpenSCAD binary does need to be reachable via the PATH,
-which means on Windows Cygwin users may need to first run something like:<br>
+The platform-native OpenSCAD binary needs to be available for this script to work.
+If it is called `openscad` and available on the PATH, then it should work out-of-the-box.
+
+In case the binary has a strange name, then set environment variable `OPENSCAD_CMD` to its name.
+This may be a full path, or just the name.
+
+Unless `OPENSCAD_CMD` is set to a full path, the binary needs to be reachable via the PATH.
+On Windows Cygwin users may need to first run something like:<br>
 ```export PATH=/cygdrive/c/Program\ Files/OpenSCAD:$PATH```<br>
 Similarly, Mac users can try:<br>
 ```export PATH=/Applications/OpenSCAD.app/Contents/MacOS:$PATH```
 
-It should mostly work on Bash 3 (i.e. Mac's non-Homebrew default), although for best results Bash 4 is recommended.
+This script should mostly work on Bash 3 (i.e. Mac's non-Homebrew default), although for best results Bash 4 is recommended.
+
+Installation
+------------
+
+**On Fedora Linux:**
+
+ColorSCAD is included in the standard repository on Fedora Linux 41 and later:
+```
+sudo dnf install colorscad
+```
+
+**On other systems:**
+
+ColorSCAD can be installed using the standard CMake installation procedure
+(which will in most cases install it to `/usr/local/bin/`), by following these steps from the repo root:
+```
+mkdir build
+cd build
+cmake ..
+cmake --build .
+sudo cmake --install .
+```
+This will also take care of building and installing `3mfmerge`.
+
+**From source:**
+
+It's possible to use ColorSCAD directly from source, without installation.
+In that case, to enable 3MF export the c++ `3mfmerge` tool first needs to be compiled;
+see [3mfmerge/README.md](3mfmerge/README.md) for details.
 
 Usage
 -----
 
-```./colorscad.sh -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]```
+To call ColorSCAD from source, use `<path>/colorscad.sh`;
+when it is installed (as on Fedora Linux, or by manual installation), simply call it as `colorscad`, without `.sh`.
 
-The output file must have as extension either '.amf' or '.3mf'.
-For more detailed usage info that lists all the options, run `./colorscad.sh -h`.
+Basic usage:
+```
+colorscad -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]
+```
+
+The output file must have as extension either `.amf` or `.3mf`.
+
+For more detailed usage info that lists all the options, run `colorscad -h`.
 
 How it works
 ------------
@@ -57,9 +99,6 @@ There is no need to make any ColorSCAD-specific changes to your .scad file(s), h
    No fancy gradients, please. If you must, it's recommended to use Linux or macOS since it runs much faster than on Windows.
 3) Let's avoid weird geometry such as overlapping color volumes...
    Avoid using multiple colors in an `intersection()` or `difference()`, if unavoidable then just wrap it in a `color()` statement.
-
-To export a 3MF file, the lib3mf library is needed, and the c++ '3mfmerge' tool using it first needs to be compiled.
-See [3mfmerge/README.md](3mfmerge/README.md).
 
 Tests
 -----

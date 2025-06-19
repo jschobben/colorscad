@@ -9,6 +9,58 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 ## [Unreleased]
 
+### Fixed
+
+- Use 'strict' mode in colorscad.sh, and improve error reporting/script comments
+- Improve clarity/robustness of using OPENSCAD_CMD
+
+## [0.7.0] - 2025-05-26
+
+### Added
+
+- Add option '-k' to allow keeping intermediate per-color models in a specified directory.
+
+### Fixed
+
+- Removed executable permission from .scad and .amf files (thanks: hegjon).
+- Small improvement to "-h": highlight need to pass an extra argument.
+- Clean up and add shellcheck validation for `test/run.sh`, and improve bad-weather error reporting.
+
+### Fixed - 3mfmerge
+
+- Add workaround for CMake 4.0 dropping support for Lib3MF's use of CMake 3.0.
+- If built from source, statically link lib3mf; this also fixes `cmake --install`.
+
+### CI
+
+- Avoid overload of GHA macos runner.
+- Verify that `cmake --install .` works.
+- Ignore age of nightly OpenSCAD build for Ubuntu 22.04.
+- Ubuntu automated tests update: remove 20.04, add 24.04.
+
+## [0.6.2] - 2025-03-30
+
+### Added
+
+- Allow installing colorscad + 3mfmerge via a unified CMake script in the repo root (thanks: hegjon).
+- ColorSCAD is now available in Fedora Linux! Document install steps, and reword README slightly.
+
+## [0.6.1] - 2025-03-15
+
+### Fixed - 3mfmerge
+
+- Search on PATH for `3mfmerge` binary, so it's no longer required to have the binary in its default location at `3mfmerge/bin/`.
+
+## [0.6.0] - 2025-03-15
+
+### Added
+
+- Support using OpenSCAD binaries which are not called `openscad`, via env var `OPENSCAD_CMD` (thanks: pinkfish)
+
+### Added - 3mfmerge
+
+- Use system's Lib3MF, if a suitable version is installed; otherwise, fall-back to building from source as before.
+
 ## [0.5.2] - 2024-09-15
 
 ### Added
@@ -129,7 +181,11 @@ Both colorscad and 3mfmerge changes are included here. Unless explicitly mention
 
 - Everything! Only supports creating a colored .amf file.
 
-[Unreleased]: https://github.com/jschobben/colorscad/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/jschobben/colorscad/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/jschobben/colorscad/compare/v0.6.2...v0.7.0
+[0.6.2]: https://github.com/jschobben/colorscad/compare/v0.6.1...v0.6.2
+[0.6.1]: https://github.com/jschobben/colorscad/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/jschobben/colorscad/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/jschobben/colorscad/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/jschobben/colorscad/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/jschobben/colorscad/compare/v0.4.2...v0.5.0

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -o errexit -o errtrace -o nounset -o pipefail
+trap 'echo "Error $? at $0:$LINENO" >&2' ERR
 
 # Get this script's directory
 DIR_SCRIPT="$(
@@ -13,27 +15,32 @@ cat <<EOF
 Usage: $0 -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]
 
 Options
-  -f  Force, this will overwrite the output file if it exists
-  -h  This message you are reading
-  -i  Input file
-  -j  Maximum number of parallel jobs to use: defaults to 8, reduce if you're low on RAM
-  -o  Output file: it must not yet exist (unless option -f is used),
-      and must have as extension either '.amf' or '.3mf'
-  -p  The path to the openscad binary to use
-  -v  Verbose logging: mostly, this enables the OpenSCAD rendering stats output (default disabled)
+  -f      Force, this will overwrite the output file if it exists
+  -h      This message you are reading
+  -i ARG  Input file
+  -j ARG  Maximum number of parallel jobs to use: defaults to 8, reduce if you're low on RAM
+  -k ARG  Keep intermediate per-color models in the given directory; this directory must not yet exist,
+          and its parent directory must be writable by this script.
+  -o ARG  Output file: it must not yet exist (unless option -f is used),
+          and must have as extension either '.amf' or '.3mf'
+  -v      Verbose logging: mostly, this enables the OpenSCAD rendering stats output (default disabled)
+
+Environment variables
+  OPENSCAD_CMD  The name of the openscad binary to use, may include full path (default: 'openscad')
 
 Example which also includes some openscad options at the end:
   $0 -i input.scad -o output.3mf -f -j 4 -- -D 'var="some value"' --hardwarnings
 EOF
 }
 
+
 FORCE=0
 INPUT=
+INTERMEDIATES_DIR=
 OUTPUT=
 PARALLEL_JOB_LIMIT=8
 VERBOSE=0
-OPENSCAD_CMD=openscad
-while getopts :fhi:j:o:p:v opt; do
+while getopts :fhi:j:k:o:v opt; do
 	case "$opt" in
 		f)
 			FORCE=1;
@@ -52,6 +59,13 @@ while getopts :fhi:j:o:p:v opt; do
 		j)
 			PARALLEL_JOB_LIMIT="$OPTARG"
 		;;
+		k)
+			INTERMEDIATES_DIR="$OPTARG"
+			if [[ -d "$INTERMEDIATES_DIR" ]]; then
+				echo "Error: intermediates directory '$INTERMEDIATES_DIR' already exists" >&2
+				exit 1
+			fi
+		;;
 		o)
 			if [ -n "$OUTPUT" ]; then
 				echo "Error: '-o' specified more than once"
@@ -59,9 +73,6 @@ while getopts :fhi:j:o:p:v opt; do
 			fi
 			OUTPUT="$OPTARG"
 		;;
-		p)
-		  OPENSCAD_CMD="$OPTARG"
-		;;  
 		v)
 			VERBOSE=1
 		;;
@@ -74,6 +85,15 @@ done
 # Assign all parameters beyond '--' to OPENSCAD_EXTRA
 shift "$((OPTIND-1))"
 OPENSCAD_EXTRA=("$@")
+
+if [ -n "${OPENSCAD_CMD-}" ]; then
+	echo "OpenSCAD binary in use, overridden via OPENSCAD_CMD: $(command -v "$OPENSCAD_CMD" || echo "not found ('${OPENSCAD_CMD}')")"
+fi
+: "${OPENSCAD_CMD:=openscad}"
+if ! command -v "$OPENSCAD_CMD" &> /dev/null; then
+	echo "Error: ${OPENSCAD_CMD} command not found! Make sure it's in your PATH."
+	exit 1
+fi
 
 if [ "$(uname)" = Darwin ]; then
 	# BSD sed, as used on macOS, uses a different parameter than GNU sed to enable line-buffered mode
@@ -126,14 +146,9 @@ if [ "$FORMAT" != amf ] && [ "$FORMAT" != 3mf ]; then
 	exit 1
 fi
 
-if ! command -v ${OPENSCAD_CMD} &> /dev/null; then
-	echo "Error: $OPENSCAD_CMD command not found! Make sure it's in your PATH."
-	exit 1
-fi
-
 if [ "$FORMAT" = 3mf ]; then
 	# Check if openscad was built with 3mf support
-	if ! ${OPENSCAD_CMD} --info 2>&1 | grep '^lib3mf version: ' | grep -qv 'not enabled'; then
+	if ! "$OPENSCAD_CMD" --info 2>&1 | grep '^lib3mf version: ' | grep -qv 'not enabled'; then
 		echo "Warning: your openscad version does not seem to have 3MF support, see 'openscad --info'."
 		echo "Either update it, or use AMF output."
 		echo
@@ -141,11 +156,12 @@ if [ "$FORMAT" = 3mf ]; then
 	fi
 
 	DIR_3MFMERGE=${DIR_SCRIPT}/3mfmerge
-	if ! [ -x "${DIR_3MFMERGE}/bin/3mfmerge" ] && ! [ -x "${DIR_3MFMERGE}/bin/3mfmerge.exe" ]; then
+	if ! BIN_3MFMERGE=$(PATH="${DIR_3MFMERGE}/bin:${PATH}" command -v 3mfmerge); then
 		echo "3MF output depends on a binary tool, that needs to be compiled first."
 		echo "Please see '3mfmerge/README.md' in the colorscad git repo (i.e. '${DIR_3MFMERGE}/')."
 		exit 1
 	fi
+	echo "Using ${BIN_3MFMERGE}"
 fi
 
 # Convert OUTPUT to a full path, because we're going to change current directory (see below)
@@ -169,13 +185,16 @@ INPUT_CSG=$(
 # Working directory. Use a dir relative to the input dir, because openscad might not have access to
 # the default temp dir; on i.e. Ubuntu, openscad can be a snap package which doesn't have access to /tmp/
 TEMPDIR=$(mktemp -d ./tmp.XXXXXX)
+# Intermediates dir; will be moved later to INTERMEDIATES_DIR, if enabled
+mkdir "${TEMPDIR}/intermediates"
+
 # Cleanup trigger
 # shellcheck disable=SC2064
 # this SHOULD expand now
 trap "rm -Rf '$(pwd)/${INPUT_CSG}' '$(pwd)/${TEMPDIR}'" EXIT
 
 # Convert input to a .csg file, mainly to resolve named colors. Also to evaluate functions etc. only once.
-${OPENSCAD_CMD} "$INPUT" -o "$INPUT_CSG" "${OPENSCAD_EXTRA[@]}"
+"$OPENSCAD_CMD" "$INPUT" -o "$INPUT_CSG" ${OPENSCAD_EXTRA[@]+"${OPENSCAD_EXTRA[@]}"}
 
 if ! [ -s "$INPUT_CSG" ]; then
 	echo "Error: the produced file '$INPUT_CSG' is empty. Looks like something went wrong..."
@@ -190,7 +209,17 @@ echo "Get list of used colors"
 # means more geometry; we want to start the biggest jobs first to improve parallelism.
 COLOR_ID_TAG="colorid_$$_${RANDOM}"
 COLORS=$(
-	${OPENSCAD_CMD} "$INPUT_CSG" -o "${TEMPDIR}/no_color.stl" -D "module color(c) {echo(${COLOR_ID_TAG}=str(c));}" 2>&1 |
+	# If the model is designed properly, all geometry has been assigned a color, which means the "no_color.stl" produced here is empty.
+	# Therefore this command is supposed to return a non-zero exit status, i.e. fail, which should be ignored.
+	OPENSCAD_OUTPUT=$("$OPENSCAD_CMD" "$INPUT_CSG" -o "${TEMPDIR}/no_color.stl" -D "module color(c) {echo(${COLOR_ID_TAG}=str(c));}" 2>&1 || true)
+	# Furthermore OpenSCAD's "echo" output goes to stderr, so we've had to capture that above.
+	# To still show some useful output in case there's an actual problem, just display the output minus any ECHOs and the expected error message.
+	# OpenSCAD should normally not output any statistics in case of an error, so no other output is expected.
+	echo "$OPENSCAD_OUTPUT" \
+	| { grep -Ev "^ECHO: |^Current top level object is empty\.$" || true; } \
+	| sed 's/^/Unexpected OpenSCAD output: /' >&2
+	# Finally, process the color-related ECHOs.
+	echo "$OPENSCAD_OUTPUT" |
 	tr -d '\r"' |
 	sed -n "s/^ECHO: ${COLOR_ID_TAG} = // p" |
 	sort |
@@ -207,7 +236,7 @@ if [ -s "${TEMPDIR}/no_color.stl" ]; then
 	echo "For a stacktrace, try running:"
 	echo -n "  openscad"
 	# Output quoted version of OPENSCAD_EXTRA, but exclude certain parameters that may confuse the stacktrace
-	for PARAM in "${OPENSCAD_EXTRA[@]}"; do
+	for PARAM in ${OPENSCAD_EXTRA[@]+"${OPENSCAD_EXTRA[@]}"}; do
 		[ "$PARAM" = --hardwarnings ] && continue
 		printf ' %q' "$PARAM"
 	done
@@ -235,22 +264,25 @@ echo
 echo "Create a separate .${FORMAT} file for each color"
 
 # Render INPUT_CSG, but only process geometry for the given color.
-# Output is written to "$TEMPDIR/$COLOR.$FORMAT".
+# Output is written to "${TEMPDIR}/intermediates/$COLOR.$FORMAT".
 # Variables INPUT_CSG, FORMAT and TEMPDIR should be defined.
 function render_color {
 	local COLOR=$1
 
 	{
-		local OUT_FILE="${TEMPDIR}/${COLOR}.${FORMAT}"
+		local OUT_FILE="${TEMPDIR}/intermediates/${COLOR}.${FORMAT}"
 		echo "Starting"
 		local EXTRA_ARGS=
 		if [ $VERBOSE -ne 1 ]; then
 			EXTRA_ARGS=--quiet
 		fi
-		${OPENSCAD_CMD} "$INPUT_CSG" -o "$OUT_FILE" $EXTRA_ARGS -D "\$colored = false; module color(c) {if (\$colored) {children();} else {\$colored = true; if (str(c) == \"${COLOR}\") children();}}"
+		"$OPENSCAD_CMD" "$INPUT_CSG" -o "$OUT_FILE" $EXTRA_ARGS -D "\$colored = false; module color(c) {if (\$colored) {children();} else {\$colored = true; if (str(c) == \"${COLOR}\") children();}}" || {
+			echo "Warning: OpenSCAD failed with error $? when trying to generate '$OUT_FILE'. Proceeding regardless..."
+			# Don't treat this as fatal error, the model might just contain no geometry for this color
+		}
 		if [ -s "$OUT_FILE" ]; then
 			echo "Finished at ${OUT_FILE}"
-		else
+		elif [ -e "$OUT_FILE" ]; then
 			echo "Warning: output is empty, removing it!"
 			rm "$OUT_FILE"
 		fi
@@ -260,7 +292,7 @@ function render_color {
 IFS=$'\n'
 JOB_ID=0
 for COLOR in $COLORS; do
-	(( JOB_ID++ ))
+	(( JOB_ID++ )) || true
 	if [ "$(jobs | wc -l)" -ge "$PARALLEL_JOB_LIMIT" ]; then
 		# Wait for one job to finish, before continuing
 		wait_n
@@ -288,21 +320,21 @@ if [ "$FORMAT" = amf ]; then
 		for COLOR in $COLORS; do
 			IFS=, read -r R G B A <<<"${COLOR//[\[\] ]/}"
 			echo " <material id=\"${id}\"><color><r>${R}</r><g>${G}</g><b>${B}</b><a>${A}</a></color></material>"
-			(( id++ ))
+			(( id++ )) || true
 		done
 		id=0
 		IFS=$'\n'
 		for COLOR in $COLORS; do
-			if grep -q -m 1 object "${TEMPDIR}/${COLOR}.amf"; then
+			if grep -q -m 1 object "${TEMPDIR}/intermediates/${COLOR}.amf"; then
 				echo " <object id=\"${id}\">"
 				# Crudely skip the AMF header/footer; assume there is exactly one "<object>" tag and keep only its contents.
 				# At the same time, set the volume's material ID, and output the result.
-				sed "1,4 d; \$ d; s/<volume>/<volume materialid=\"${id}\">/" "${TEMPDIR}/${COLOR}.amf"
+				sed "1,4 d; \$ d; s/<volume>/<volume materialid=\"${id}\">/" "${TEMPDIR}/intermediates/${COLOR}.amf"
 			else
 				echo "Skipping ${COLOR}!" >&2
-				(( SKIPPED++ ))
+				(( SKIPPED++ )) || true
 			fi
-			(( id++ ))
+			(( id++ )) || true
 			echo -ne "\r  ${id}/${COLOR_COUNT} " >&2
 		done
 		echo '</amf>'
@@ -320,22 +352,30 @@ if [ "$FORMAT" = amf ]; then
 		MERGE_STATUS=1
 	fi
 elif [ "$FORMAT" = 3mf ]; then
-	# Run from inside TEMPDIR, to support having a Windows-format 3mfmerge binary
+	# Run from inside TEMPDIR/intermediates, to support having a Windows-format 3mfmerge binary
 	(
-		cd "$TEMPDIR" || exit 1
+		cd "${TEMPDIR}/intermediates" || exit 1
 		# shellcheck disable=SC2001
-		"${DIR_3MFMERGE}"/bin/3mfmerge merged.3mf < \
+		"${BIN_3MFMERGE}" merged.3mf < \
 		  <(echo "$COLORS" | sed "s/\$/\.${FORMAT}/")
-	)
-	MERGE_STATUS=$?
-	if ! [ -s "${TEMPDIR}"/merged.3mf ]; then
+	) || MERGE_STATUS=$?
+	if ! [ -s "${TEMPDIR}"/intermediates/merged.3mf ]; then
 		echo "Merging failed, aborting!"
 		exit 1
 	fi
-	mv "${TEMPDIR}"/merged.3mf "$OUTPUT"
+	mv "${TEMPDIR}"/intermediates/merged.3mf "$OUTPUT"
 else
 	echo "Merging of format '${FORMAT}' not yet implemented!"
 	exit 1
+fi
+
+# Move intermediates to requested directory, if applicable
+if [[ -n "$INTERMEDIATES_DIR" ]]; then
+	echo "Keeping intermediates in '${INTERMEDIATES_DIR}'"
+	mv "${TEMPDIR}/intermediates" "$INTERMEDIATES_DIR" || {
+		echo "Unable to move intermediates to '${INTERMEDIATES_DIR}'. Please make sure its parent directory is writable." >&2
+		exit 1
+	}
 fi
 
 echo

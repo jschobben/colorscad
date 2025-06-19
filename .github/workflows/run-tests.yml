@@ -24,10 +24,6 @@ jobs:
             uri: https://files.openscad.org/OpenSCAD-2015.03-3.dmg
             test-params: skip3mf old_boolean
 
-          - name: Ubuntu 2019.05
-            runner: ubuntu-20.04
-            apt: openscad=2019.05-3ubuntu5
-            test-params: old_boolean
           - name: Windows 2019.05
             runner: windows-latest
             uri: https://files.openscad.org/OpenSCAD-2019.05-x86-64.zip
@@ -54,11 +50,17 @@ jobs:
             runner: macos-latest
             uri: https://files.openscad.org/OpenSCAD-2021.01.dmg
 
+          - name: Ubuntu 2021.01 on 24.04
+            runner: ubuntu-24.04
+            apt: openscad=2021.01-6build4
+
           - name: Ubuntu nightly on 22.04
             runner: ubuntu-22.04
             apt-key: https://files.openscad.org/OBS-Repository-Key.pub
             apt-repo: https://download.opensuse.org/repositories/home:/t-paul/xUbuntu_22.04/
             apt: openscad-nightly
+            # As of 17 may 2025, this build appears to be stale
+            skip-age-check: true
           - name: Ubuntu nightly on latest
             runner: ubuntu-latest
             apt-key: https://files.openscad.org/OBS-Repository-Key.pub
@@ -100,13 +102,23 @@ jobs:
             echo 'deb ${{ matrix.apt-repo }} ./' | sudo tee /etc/apt/sources.list.d/openscad.list
             sudo apt update
           fi
-          sudo apt install '${{ matrix.apt }}'
+          CMD='apt install ${{ matrix.apt }}'
+          sudo ${CMD} || {
+            echo "'apt install' failed, running 'apt update' and retry..."
+            sudo apt update
+            sudo ${CMD}
+          }
           which openscad || sudo ln -s "$(which openscad-nightly)" /usr/local/bin/openscad
 
       - name: Install OpenSCAD (AppImage)
         if: endsWith(env.URI, '.AppImage')
         run: |
-          sudo apt install fuse libopengl0 libegl1
+          CMD='apt install fuse libopengl0 libegl1'
+          sudo ${CMD} || {
+            echo "'apt install' failed, running 'apt update' and retry..."
+            sudo apt update
+            sudo ${CMD}
+          }
           sudo aria2c "${URI}" -d /usr/local/bin -o openscad
           sudo chmod +x /usr/local/bin/openscad
 
@@ -142,7 +154,7 @@ jobs:
           fi
 
       - name: OpenSCAD nightly age check
-        if: contains(matrix.name, 'nightly')
+        if: contains(matrix.name, 'nightly') && !matrix.skip-age-check
         run: |
           V=$(openscad --version 2>&1 | sed -n 's/^OpenSCAD version // p')
           IFS=. read Y M D x <<<"$V"
@@ -184,7 +196,12 @@ jobs:
           mkdir build
           cd build
           cmake .. -DLIB3MF_TESTS=OFF
-          cmake --build . --parallel
+          # Limit workers to 2 for macos, as GHA's macos runner gets overloaded and very slow otherwise
+          WORKERS=
+          if [[ "$(uname -s)" = Darwin ]]; then WORKERS=2; fi
+          cmake --build . --parallel ${WORKERS}
+          # Meanwhile let's also verify the "install" step works; installed files aren't actually used further on here
+          cmake --install . || sudo cmake --install .
         working-directory: 3mfmerge
 
       - name: Run tests
@@ -198,10 +215,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: File permissions
+        run: |
+          if find . -name .git -prune -o -type f ! -path ./colorscad.sh ! -path ./test/run.sh -perm /111 -ls | grep .; then
+            echo "::error::Found some files with unexpected executable permission"
+            exit 1
+          fi
+
       - name: shellcheck colorscad.sh
         run: |
           shellcheck colorscad.sh
-      # TODO check tests, 3mfmerge
+
+      - name: shellcheck test/run.sh
+        run: |
+          shellcheck test/run.sh
+      # TODO check 3mfmerge
 
   # Collect results, to be used as combined status check for PRs
   all-succeeded:
