@@ -44,11 +44,16 @@ else()
   unset(LIB3MF_INCLUDE_DIRS)
   unset(LIB3MF_LIBRARIES)
 
+  set(PATCHES
+    ${CMAKE_CURRENT_SOURCE_DIR}/patches/lib3mf_static.patch
+    ${CMAKE_CURRENT_SOURCE_DIR}/patches/lib3mf_missing_include.patch
+  )
+
   FetchContent_Declare(
     lib3mf
     URL https://github.com/3MFConsortium/lib3mf/releases/download/v${LIB3MF_VERSION}/lib3mf-${LIB3MF_VERSION}-source-with-submodules.zip
     URL_HASH SHA256=${LIB3MF_SOURCES_HASH}
-    PATCH_COMMAND git apply --ignore-whitespace ${CMAKE_CURRENT_SOURCE_DIR}/patches/lib3mf_static.patch
+    PATCH_COMMAND git apply --ignore-whitespace ${PATCHES}
     EXCLUDE_FROM_ALL
   )
   # LIB3MF still uses "cmake_minimum_required (VERSION 3.0)", which is unsupported in CMake 4.0
