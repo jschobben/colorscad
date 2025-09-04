@@ -92,7 +92,7 @@ function fail_tips {
 trap 'echo "Failure at $0:$LINENO" >&2; fail_tips >&2' ERR
 
 
-# Prepare given 3MF for comparison: strip UUIDs, and remove the "xmlns" attribute that not all versions add.
+# Prepare given 3MF for comparison: strip UUIDs, and remove the "xmlns:*" attributes that not all versions add.
 function canonicalize_3mf {
 	local IN=$1
 	local OUT_DIR=$2
@@ -100,9 +100,9 @@ function canonicalize_3mf {
 	unzip -q "$IN" -d "$OUT_DIR"
 
 	# Need to specify backup suffix for macOS compatibility; just remove unneeded backup
-	sed -i.bak '
+	sed -E -i.bak '
 		s/UUID="[^"]*"//g;
-		s/ xmlns:sc="[^"]*"//g;
+		s/ xmlns:[a-z]+="[^"]*"//g;
 	' "${OUT_DIR}/3D/3dmodel.model"
 	rm "${OUT_DIR}/3D/3dmodel.model.bak"
 }
