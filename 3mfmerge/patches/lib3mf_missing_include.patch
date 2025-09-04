@@ -1,0 +1,11 @@
+--- a/Source/Model/Writer/v100/NMR_ResourceDependencySorter.cpp	2025-09-04 17:58:45.035566911 +0000
++++ b/Source/Model/Writer/v100/NMR_ResourceDependencySorter.cpp	2025-09-04 17:59:45.035566911 +0000
+@@ -32,6 +32,8 @@
+ 
+ #include "Model/Writer/v100/NMR_ResourceDependencySorter.h"
+ 
++#include <algorithm>
++
+ #include "Common/Graph/DirectedGraph.h"
+ #include "Common/Graph/GraphAlgorithms.h"
+ #include "Model/Classes/NMR_Model.h"

@@ -196,10 +196,7 @@ jobs:
           mkdir build
           cd build
           cmake .. -DLIB3MF_TESTS=OFF
-          # Limit workers to 2 for macos, as GHA's macos runner gets overloaded and very slow otherwise
-          WORKERS=
-          if [[ "$(uname -s)" = Darwin ]]; then WORKERS=2; fi
-          cmake --build . --parallel ${WORKERS}
+          cmake --build . --parallel $(getconf _NPROCESSORS_ONLN)
           # Meanwhile let's also verify the "install" step works; installed files aren't actually used further on here
           cmake --install . || sudo cmake --install .
         working-directory: 3mfmerge

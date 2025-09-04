@@ -37,23 +37,25 @@ if(LIB3MF_FOUND AND NOT TARGET lib3mf)
     INTERFACE_INCLUDE_DIRECTORIES "${LIB3MF_INCLUDE_DIRS}"
   )
 else()
-  set(LIB3MF_VERSION 2.2.0)
-  set(LIB3MF_TARBALL_HASH 96e85e278fc5474123e3c47237dd42faaf1fdf8e182541a84af7fe84ddd3cbde)
-
+  set(LIB3MF_VERSION 2.4.1)
+  set(LIB3MF_SOURCES_HASH 4e9e1776f4dd1b3dfce684ce9bb4ad1157dadf29908a1f3aabb6cd4358bf3248)
   message("Building LIB3MF ${LIB3MF_VERSION} from source")
 
   unset(LIB3MF_INCLUDE_DIRS)
   unset(LIB3MF_LIBRARIES)
 
+  set(PATCHES
+    ${CMAKE_CURRENT_SOURCE_DIR}/patches/lib3mf_static.patch
+    ${CMAKE_CURRENT_SOURCE_DIR}/patches/lib3mf_missing_include.patch
+  )
+
   FetchContent_Declare(
     lib3mf
-    URL https://github.com/3MFConsortium/lib3mf/archive/refs/tags/v${LIB3MF_VERSION}.tar.gz
-    URL_HASH SHA256=${LIB3MF_TARBALL_HASH}
-    PATCH_COMMAND git apply --ignore-whitespace ${CMAKE_CURRENT_SOURCE_DIR}/patches/lib3mf_static.patch
+    URL https://github.com/3MFConsortium/lib3mf/releases/download/v${LIB3MF_VERSION}/lib3mf-${LIB3MF_VERSION}-source-with-submodules.zip
+    URL_HASH SHA256=${LIB3MF_SOURCES_HASH}
+    PATCH_COMMAND git apply --ignore-whitespace ${PATCHES}
     EXCLUDE_FROM_ALL
   )
-  # LIB3MF's tests reference submodule dependencies, not included in the tarball
-  option(LIB3MF_TESTS OFF)
   # LIB3MF still uses "cmake_minimum_required (VERSION 3.0)", which is unsupported in CMake 4.0
   set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
