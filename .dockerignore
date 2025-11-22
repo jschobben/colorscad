@@ -1,0 +1,6 @@
+# Ignore local files that shouldn't be in the Docker context
+.git
+*.stl
+*.amf
+*.3mf
+build/
