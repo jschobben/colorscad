@@ -35,6 +35,7 @@ Installation
 **On Fedora Linux:**
 
 ColorSCAD is included in the standard repository on Fedora Linux 41 and later:
+
 ```
 sudo dnf install colorscad
 ```
@@ -43,6 +44,7 @@ sudo dnf install colorscad
 
 ColorSCAD can be installed using the standard CMake installation procedure
 (which will in most cases install it to `/usr/local/bin/`), by following these steps from the repo root:
+
 ```
 mkdir build
 cd build
@@ -50,6 +52,7 @@ cmake ..
 cmake --build .
 sudo cmake --install .
 ```
+
 This will also take care of building and installing `3mfmerge`.
 
 **From source:**
@@ -65,6 +68,7 @@ To call ColorSCAD from source, use `<path>/colorscad.sh`;
 when it is installed (as on Fedora Linux, or by manual installation), simply call it as `colorscad`, without `.sh`.
 
 Basic usage:
+
 ```
 colorscad -i <input scad file> -o <output file> [OTHER OPTIONS...] [-- OPENSCAD OPTIONS...]
 ```
@@ -82,6 +86,7 @@ containing only geometry with that color.
 Finally, all per-color intermediate files are combined, with color info added.
 
 Or, in a bit more detail:
+
 1) Convert the model to .csg format, mostly to resolve the various ways color() can be used into r/g/b/a parameters.
 2) Call OpenSCAD to export a .stl, but redefine the color() module to echo its parameters and do nothing else.
 3) Check that the produced .stl is empty; if not, complain about it and stubbornly refuse to continue.
@@ -93,6 +98,7 @@ Preparations
 ------------
 
 There is no need to make any ColorSCAD-specific changes to your .scad file(s), however they do need to follow these rules:
+
 1) All geometry has a color assigned.
    Geometry without a color would end up having *every other* color assigned. The script detects this case though, and refuses to run.
 2) Don't use too many colors, or be prepared to have a lot of patience.
@@ -129,3 +135,62 @@ Probably some weird output may be produced if color volumes overlap.
 
 In fact, weird behavior may occur at any time! Hopefully the tests will catch it.
 If it doesn't seem to work for your .scad for any non-obvious reason, let's hear about it.
+
+Docker
+-------
+
+**Building the Image**
+
+```bash
+docker build -t colorscad .
+```
+
+**Usage**
+
+Show Help
+
+```bash
+docker run --rm colorscad
+```
+
+Convert a SCAD file to 3MF
+
+```bash
+docker run --rm -v "${PWD}:/workspace" colorscad colorscad -i input.scad -o output.3mf
+```
+
+Convert a SCAD file to AMF
+
+```bash
+docker run --rm -v "${PWD}:/workspace" colorscad colorscad -i input.scad -o output.amf
+```
+
+Advanced Usage with OpenSCAD Options
+
+```bash
+docker run --rm -v "${PWD}:/workspace" colorscad colorscad -i input.scad -o output.3mf -j 4 -- -D 'var="value"' --hardwarnings
+```
+
+**What's Included**
+
+- OpenSCAD: The 3D modeling software required by ColorSCAD
+- ColorSCAD: The main script for exporting colored models
+- 3mfmerge: C++ tool for merging 3MF files with color information
+- Build tools: CMake, g++, and other dependencies needed for compilation
+
+**Notes**
+
+- The image uses Ubuntu 22.04 as the base
+- The working directory inside the container is `/workspace`
+- Mount your local directory with `-v` to access your SCAD files
+- ColorSCAD is installed to `/usr/local/bin/colorscad`
+
+**Example**
+
+Given a file `colors.scad` in your current directory:
+
+```bash
+docker run --rm -v "${PWD}:/workspace" colorscad colorscad -i colors.scad -o colors.3mf
+```
+
+This will create `colors.3mf` in your current directory with all color information preserved from the OpenSCAD preview (F5 view).
