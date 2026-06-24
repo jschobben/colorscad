@@ -168,12 +168,14 @@ int mergeModels(char* outputFile)
       << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" << std::endl
       << "<config>" << std::endl
       << "  <object id=\"" << buildItem->GetObjectResourceID() << "\">" << std::endl;
+  int idx = 1;
   for (const auto& pair : id_to_name) {
     std::string component_name = replace_all(pair.second, "&", "&amp;");
     component_name = replace_all(std::move(component_name), "\"", "&quot;");
     model_settings_stream
         << "    <part id=\"" << pair.first << "\" subtype=\"normal_part\">" << std::endl
         << "      <metadata key=\"name\" value=\"" << component_name << "\"/>" << std::endl
+        << "      <metadata key=\"extruder\" value=\"" << idx++ << "\"/>" << std::endl
         << "    </part>" << std::endl;
   }
   model_settings_stream
