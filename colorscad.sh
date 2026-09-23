@@ -162,6 +162,14 @@ if [ "$FORMAT" = 3mf ]; then
 		exit 1
 	fi
 	echo "Using ${BIN_3MFMERGE}"
+elif [ "$FORMAT" = amf ]; then
+	# Check if openscad is not too new, AMF support is removed in newer versions
+	if ! "$OPENSCAD_CMD" --version 2>&1 | grep -q '2015\.03' \
+			&& ! "$OPENSCAD_CMD" --help 2>&1 | sed -n '/^ *-o/,/^ *$/ p' | grep -q 'amf'; then
+		echo "Error: your openscad version does not seem to have AMF support, see 'openscad --help' for the '-o' option."
+		echo "It was removed on 30 aug 2026. Either use an older openscad, or use 3MF output."
+		exit 1
+	fi
 fi
 
 # Convert OUTPUT to a full path, because we're going to change current directory (see below)
