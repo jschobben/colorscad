@@ -274,6 +274,7 @@ function render_color {
 		echo "Starting"
 		local EXTRA_ARGS=
 		if [ $VERBOSE -ne 1 ]; then
+			# Caveat: this can hide errors, see https://github.com/openscad/openscad/issues/3506
 			EXTRA_ARGS=--quiet
 		fi
 		"$OPENSCAD_CMD" "$INPUT_CSG" -o "$OUT_FILE" $EXTRA_ARGS -D "\$colored = false; module color(c) {if (\$colored) {children();} else {\$colored = true; if (str(c) == \"${COLOR}\") children();}}" || {
