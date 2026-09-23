@@ -83,7 +83,7 @@ jobs:
     env:
       URI: ${{ matrix.uri }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Make runner image version accessible
         run: echo "ImageVersion=${ImageVersion}" >> $GITHUB_ENV
@@ -183,7 +183,7 @@ jobs:
           fi
 
       - name: Cache 3mfmerge
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: 3mfmerge/bin
           key: test-${{ matrix.runner }}-${{ runner.arch }}-${{ env.OS_RELEASE }}-${{ env.ImageVersion }}-3mfmerge-${{ hashFiles('3mfmerge/*') }}
@@ -215,7 +215,7 @@ jobs:
     name: Check code quality
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: File permissions
         run: |
