@@ -15,9 +15,11 @@ COLORSCAD=$(pwd)/../colorscad.sh
 # temp dir; on i.e. Ubuntu, openscad can be a snap package which doesn't have access to /tmp/
 TEMPDIR_REL=$(mktemp -d ./tmp.XXXXXX)
 TEMPDIR="$(pwd)/${TEMPDIR_REL}"
+# Workaround for bash 3.2 (macos) bug: unset var when errexit+nounset are enabled quits with status 0
+TESTS_PASSED=false
 # shellcheck disable=SC2064
 # this SHOULD expand now
-trap "'${OPENSCAD_CMD}' --info 2>&1 | grep '^OpenSCAD Version: '; rm -Rf '$TEMPDIR'" EXIT
+trap "'${OPENSCAD_CMD}' --info 2>&1 | grep '^OpenSCAD Version: '; rm -Rf '$TEMPDIR'; trap - ERR; \$TESTS_PASSED" EXIT
 
 SKIP_3MF=0
 OLD_BOOLEAN=0
@@ -314,3 +316,6 @@ echo "All tests passed"
 if [ $SKIP_3MF -ne 0 ]; then
 	echo "However, all 3mf tests were skipped"
 fi
+
+# Workaround for bash 3.2 (macos) bug: unset var when errexit+nounset are enabled quits with status 0
+TESTS_PASSED=true
