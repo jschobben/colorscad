@@ -151,7 +151,7 @@ function test_render {
 	shift 2
 	local EXTRA_ARGS=("$@")
 
-	echo "Testing: input=${INPUT} expected=${EXPECTED} extra_args='${EXTRA_ARGS[*]}'"
+	echo "Testing: input=${INPUT} expected=${EXPECTED} extra_args='${EXTRA_ARGS[*]-}'"
 
 	if ! [ -e "$INPUT" ] || ! [ -e "$EXPECTED" ]; then
 		echo "Error: could not find all files"
@@ -179,7 +179,10 @@ function test_render {
 			export -f openscad_test_override
 			export OPENSCAD_CMD=openscad_test_override
 		fi
+		# Temporarily disable 'nounset' as workaround for bash 3.2 when EXTRA_ARGS is empty
+		set +o nounset
 		${COLORSCAD} -i "$INPUT" -o "$OUTPUT" -j 4 "${EXTRA_ARGS[@]}" > >(sed 's/^/  /') 2>&1
+		set -o nounset
 	)
 
 	# Canonicalize the expectation and output, so they can be compared
