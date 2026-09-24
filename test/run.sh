@@ -15,16 +15,23 @@ COLORSCAD=$(pwd)/../colorscad.sh
 # temp dir; on i.e. Ubuntu, openscad can be a snap package which doesn't have access to /tmp/
 TEMPDIR_REL=$(mktemp -d ./tmp.XXXXXX)
 TEMPDIR="$(pwd)/${TEMPDIR_REL}"
+# Workaround for bash 3.2 (macos) bug: unset var when errexit+nounset are enabled quits with status 0
+TESTS_PASSED=false
 # shellcheck disable=SC2064
 # this SHOULD expand now
-trap "'${OPENSCAD_CMD}' --info 2>&1 | grep '^OpenSCAD Version: '; rm -Rf '$TEMPDIR'" EXIT
+trap "'${OPENSCAD_CMD}' --info 2>&1 | grep '^OpenSCAD Version: '; rm -Rf '$TEMPDIR'; trap - ERR; \$TESTS_PASSED" EXIT
 
 SKIP_3MF=0
+TEST_AMF=0
 OLD_BOOLEAN=0
 for ARG in "$@"; do
 	if [ "$ARG" = skip3mf ]; then
 		SKIP_3MF=1
 		echo "Will skip all tests that need 3mf support in openscad"
+	elif [ "$ARG" = test_amf ]; then
+		TEST_AMF=1
+		echo "Will run all tests that need amf support in openscad"
+		# Use opt-in logic for AMF tests; it's preferred to have nightly tests work without any extra options
 	elif [ "$ARG" = old_boolean ]; then
 		OLD_BOOLEAN=1
 		echo "Will setup tests to expect 'old' (<=2019.05) boolean semantics"
@@ -149,7 +156,7 @@ function test_render {
 	shift 2
 	local EXTRA_ARGS=("$@")
 
-	echo "Testing: input=${INPUT} expected=${EXPECTED} extra_args='${EXTRA_ARGS[*]}'"
+	echo "Testing: input=${INPUT} expected=${EXPECTED} extra_args='${EXTRA_ARGS[*]-}'"
 
 	if ! [ -e "$INPUT" ] || ! [ -e "$EXPECTED" ]; then
 		echo "Error: could not find all files"
@@ -157,6 +164,10 @@ function test_render {
 	fi
 
 	local FORMAT=${EXPECTED##*.}
+	if [ "$FORMAT" = amf ] && [ $TEST_AMF -eq 0 ]; then
+		echo "  Skipping AMF test"
+		return
+	fi
 	if [ "$FORMAT" = 3mf ] && [ $SKIP_3MF -ne 0 ]; then
 		echo "  Skipping 3MF test"
 		return
@@ -177,7 +188,10 @@ function test_render {
 			export -f openscad_test_override
 			export OPENSCAD_CMD=openscad_test_override
 		fi
+		# Temporarily disable 'nounset' as workaround for bash 3.2 when EXTRA_ARGS is empty
+		set +o nounset
 		${COLORSCAD} -i "$INPUT" -o "$OUTPUT" -j 4 "${EXTRA_ARGS[@]}" > >(sed 's/^/  /') 2>&1
+		set -o nounset
 	)
 
 	# Canonicalize the expectation and output, so they can be compared
@@ -201,6 +215,14 @@ fi
 # Nasty weather tests: check that the sanity checks catch all error conditions
 echo "Testing bad weather:"
 (
+	FORMAT=amf
+	if [ $TEST_AMF -eq 0 ]; then
+		FORMAT=3mf
+		if [ $SKIP_3MF -ne 0 ]; then
+			echo "Error: 3MF and AMF are both disabled"
+			exit 1
+		fi
+	fi
 	mkdir "${TEMPDIR}"/nasty
 	cd "${TEMPDIR}"/nasty
 	${COLORSCAD} -i input -i input | expect_stdin "Error: '-i' specified more than once"
@@ -213,12 +235,12 @@ echo "Testing bad weather:"
 	${COLORSCAD} | expect_stdin 'You must provide both'
 	echo 'color("red") cube();' > color.scad
 	${COLORSCAD} -i color.scad | expect_stdin 'You must provide both'
-	${COLORSCAD} -o output.amf | expect_stdin 'You must provide both'
-	${COLORSCAD} -i missing.scad -o output.amf | expect_stdin "Input 'missing.scad' does not exist"
+	${COLORSCAD} -o output.${FORMAT} | expect_stdin 'You must provide both'
+	${COLORSCAD} -i missing.scad -o output.${FORMAT} | expect_stdin "Input 'missing.scad' does not exist"
 	echo 'cube();' > no_color.scad
-	${COLORSCAD} -i no_color.scad -o output.amf 2>&1 | expect_stdin 'Unexpected OpenSCAD output:.*\\nFatal error: some geometry is not wrapped'
-	touch existing.amf
-	${COLORSCAD} -i color.scad -o existing.amf | expect_stdin "Output 'existing.amf' already exists"
+	${COLORSCAD} -i no_color.scad -o output.${FORMAT} 2>&1 | expect_stdin 'Unexpected OpenSCAD output:.*\\nFatal error: some geometry is not wrapped'
+	touch existing.${FORMAT}
+	${COLORSCAD} -i color.scad -o existing.${FORMAT} | expect_stdin "Output 'existing.${FORMAT}' already exists"
 	${COLORSCAD} -i color.scad -o wrong.ext | expect_stdin "the output file's extension must be one of 'amf' or '3mf'"
 	(
 		function command {
@@ -226,9 +248,9 @@ echo "Testing bad weather:"
 			builtin command "$@"
 		}
 		export -f command
-		${COLORSCAD} -i color.scad -o output.amf | expect_stdin "${OPENSCAD_CMD} command not found"
+		${COLORSCAD} -i color.scad -o output.${FORMAT} | expect_stdin "${OPENSCAD_CMD} command not found"
 	)
-	OPENSCAD_CMD=i_am_not_here ${COLORSCAD} -i color.scad -o output.amf | expect_stdin 'i_am_not_here command not found'
+	OPENSCAD_CMD=i_am_not_here ${COLORSCAD} -i color.scad -o output.${FORMAT} | expect_stdin 'i_am_not_here command not found'
 	(
 		trap 'echo "Failure on line $LINENO"; exit 1' ERR
 		# If 'openscad --info' does not list 3mf support, it's a warning (followed by an abort due to this mock not producing output)
@@ -240,13 +262,13 @@ echo "Testing bad weather:"
 		${COLORSCAD} -i color.scad -o output.3mf | expect_stdin 'Warning: your openscad version does not seem to have 3MF support'
 	)
 	echo 'cheese' > syntax_error.scad
-	${COLORSCAD} -i syntax_error.scad -o output.amf 2>&1 | expect_stdin "ERROR: Parser error.*: syntax error"
+	${COLORSCAD} -i syntax_error.scad -o output.${FORMAT} 2>&1 | expect_stdin "ERROR: Parser error.*: syntax error"
 	echo '' > empty.scad
-	${COLORSCAD} -i empty.scad -o output.amf 2>&1 | expect_stdin 'Error: no colors were found at all'
+	${COLORSCAD} -i empty.scad -o output.${FORMAT} 2>&1 | expect_stdin 'Error: no colors were found at all'
 	mkdir existing_dir
-	${COLORSCAD} -i color.scad -o output.amf -k existing_dir 2>&1 \
+	${COLORSCAD} -i color.scad -o output.${FORMAT} -k existing_dir 2>&1 \
 	| expect_stdin "Error: intermediates directory 'existing_dir' already exists"
-	${COLORSCAD} -i color.scad -o output.amf -k nonexisting/sub_dir 2>&1 \
+	${COLORSCAD} -i color.scad -o output.${FORMAT} -k nonexisting/sub_dir 2>&1 \
 	| expect_stdin "Unable to move intermediates to 'nonexisting/sub_dir'. Please make sure its parent directory is writable."
 )
 echo "Bad weather tests all passed."
@@ -278,25 +300,25 @@ for NAME in test_color_args test_import; do
 		INTERMEDIATES="${TEMPDIR}"/${OUTPUT}_intermediates
 		test_render ${NAME}.scad expectations/${OUTPUT} -k "$INTERMEDIATES"
 		# Check intermediate filenames (contents vary too much pre-3mfmerging)
-		if [ $EXT != 3mf ] || [ $SKIP_3MF -eq 0 ]; then
-			HASH=$(
-				cd "$INTERMEDIATES"
-				find . -type f \
-				| LC_ALL=C sort -s \
-				| shasum -a 256 \
-				| cut -b 1-16
-			)
-			case "$OUTPUT" in
-				test_color_args.3mf) EXPECTED=da5bc9e62064c8c7;;
-				test_color_args.amf) EXPECTED=9c957489e9fa6d28;;
-				test_import.3mf) EXPECTED=386124a872a5025b;;
-				test_import.amf) EXPECTED=04f11ac02bfd5859;;
-				*) false
-			esac
-			if [[ "$HASH" != "$EXPECTED" ]]; then
-				echo "Intermediates for ${OUTPUT} have unexpected hash, expecting ${EXPECTED} but was ${HASH}" >&2
-				false
-			fi
+		[ $EXT = 3mf ] && [ $SKIP_3MF -ne 0 ] && continue
+		[ $EXT = amf ] && [ $TEST_AMF -eq 0 ] && continue
+		HASH=$(
+			cd "$INTERMEDIATES"
+			find . -type f \
+			| LC_ALL=C sort -s \
+			| shasum -a 256 \
+			| cut -b 1-16
+		)
+		case "$OUTPUT" in
+			test_color_args.3mf) EXPECTED=da5bc9e62064c8c7;;
+			test_color_args.amf) EXPECTED=9c957489e9fa6d28;;
+			test_import.3mf) EXPECTED=386124a872a5025b;;
+			test_import.amf) EXPECTED=04f11ac02bfd5859;;
+			*) false
+		esac
+		if [[ "$HASH" != "$EXPECTED" ]]; then
+			echo "Intermediates for ${OUTPUT} have unexpected hash, expecting ${EXPECTED} but was ${HASH}" >&2
+			false
 		fi
 	done
 done
@@ -314,3 +336,7 @@ echo "All tests passed"
 if [ $SKIP_3MF -ne 0 ]; then
 	echo "However, all 3mf tests were skipped"
 fi
+# Don't complain about amf tests, as it's deprecated in nightly openscad
+
+# Workaround for bash 3.2 (macos) bug: unset var when errexit+nounset are enabled quits with status 0
+TESTS_PASSED=true

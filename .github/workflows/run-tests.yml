@@ -18,47 +18,53 @@ jobs:
           - name: Windows 2015.03
             runner: windows-latest
             uri: https://files.openscad.org/OpenSCAD-2015.03-2-x86-64.zip
-            test-params: skip3mf old_boolean
+            test-params: skip3mf test_amf old_boolean
           - name: MacOS 2015.03
             runner: macos-latest
             uri: https://files.openscad.org/OpenSCAD-2015.03-3.dmg
-            test-params: skip3mf old_boolean
+            test-params: skip3mf test_amf old_boolean
 
           - name: Windows 2019.05
             runner: windows-latest
             uri: https://files.openscad.org/OpenSCAD-2019.05-x86-64.zip
-            test-params: old_boolean
+            test-params: test_amf old_boolean
           - name: AppImage 2019.05
             runner: ubuntu-latest
             uri: https://files.openscad.org/OpenSCAD-2019.05-x86_64.AppImage
-            test-params: old_boolean
+            test-params: test_amf old_boolean
           - name: MacOS 2019.05
             runner: macos-latest
             uri: https://files.openscad.org/OpenSCAD-2019.05.dmg
-            test-params: old_boolean
+            test-params: test_amf old_boolean
 
           - name: Ubuntu 2021.01
             runner: ubuntu-22.04
             apt: openscad=2021.01-4build1
+            test-params: test_amf
           - name: Windows 2021.01
             runner: windows-latest
             uri: https://files.openscad.org/OpenSCAD-2021.01-x86-64.zip
+            test-params: test_amf
           - name: AppImage 2021.01
             runner: ubuntu-latest
             uri: https://files.openscad.org/OpenSCAD-2021.01-x86_64.AppImage
+            test-params: test_amf
           - name: MacOS 2021.01
             runner: macos-latest
             uri: https://files.openscad.org/OpenSCAD-2021.01.dmg
+            test-params: test_amf
 
           - name: Ubuntu 2021.01 on 24.04
             runner: ubuntu-24.04
             apt: openscad=2021.01-6build4
+            test-params: test_amf
 
           - name: Ubuntu nightly on 22.04
             runner: ubuntu-22.04
             apt-key: https://files.openscad.org/OBS-Repository-Key.pub
             apt-repo: https://download.opensuse.org/repositories/home:/t-paul/xUbuntu_22.04/
             apt: openscad-nightly
+            test-params: test_amf
             # As of 17 may 2025, this build appears to be stale
             skip-age-check: true
           - name: Ubuntu nightly on latest
@@ -83,7 +89,7 @@ jobs:
     env:
       URI: ${{ matrix.uri }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Make runner image version accessible
         run: echo "ImageVersion=${ImageVersion}" >> $GITHUB_ENV
@@ -183,7 +189,7 @@ jobs:
           fi
 
       - name: Cache 3mfmerge
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: 3mfmerge/bin
           key: test-${{ matrix.runner }}-${{ runner.arch }}-${{ env.OS_RELEASE }}-${{ env.ImageVersion }}-3mfmerge-${{ hashFiles('3mfmerge/*') }}
@@ -215,7 +221,7 @@ jobs:
     name: Check code quality
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: File permissions
         run: |
