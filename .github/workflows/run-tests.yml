@@ -147,7 +147,7 @@ jobs:
         working-directory: ${{ runner.temp }}
 
       - name: Setup Windows OpenGL
-        uses: ssciwr/setup-mesa-dist-win@6657792673a5d162d5f244db991ba45b4b68989f  # v2
+        uses: ssciwr/setup-mesa-dist-win@2dfeaebfa514f74c2b8cd8d27108c31486d33e72  # v3
         if: contains(matrix.runner, 'windows')
 
       - name: OpenSCAD --info
