@@ -1,2 +1,10 @@
 /bin/
 /build*/
+CMakeCache.txt
+CPackConfig.*
+CPackSourceConfig.*
+Makefile
+CMakeFiles/*
+include/*
+_deps/*
+cmake_install.cmake
