@@ -188,11 +188,24 @@ jobs:
             echo "OS_RELEASE=non_linux" >> $GITHUB_ENV
           fi
 
+      # Mainly used to distinguish between lib3mf being used-as-system-library vs built-from-source.
+      # Important for the cache key, as only in the latter case lib3mf is part of the cache.
+      - name: Get Lib3MF version
+        run: |
+          if pkg-config --exists lib3mf; then
+            echo "LIB3MF_VERSION=$(pkg-config --modversion lib3mf)"
+            echo "LIB3MF_SOURCE=system"
+          else
+            # Exact version is specified in 3mfmerge/cmake/FindLIB3MF.cmake, covered by hashFiles() below
+            echo "LIB3MF_VERSION=hardcoded"
+            echo "LIB3MF_SOURCE=fetched"
+          fi >> $GITHUB_ENV
+
       - name: Cache 3mfmerge
         uses: actions/cache@v5
         with:
           path: 3mfmerge/bin
-          key: test-${{ matrix.runner }}-${{ runner.arch }}-${{ env.OS_RELEASE }}-${{ env.ImageVersion }}-3mfmerge-${{ hashFiles('3mfmerge/*') }}
+          key: test-${{ matrix.runner }}-${{ runner.arch }}-${{ env.OS_RELEASE }}-${{ env.ImageVersion }}-${{ env.LIB3MF_SOURCE }}-${{ env.LIB3MF_VERSION }}-3mfmerge-${{ hashFiles('3mfmerge/*', '3mfmerge/cmake/*') }}
 
       # This step takes most of the time as it includes lib3mf build, hence the caching.
       - name: Build 3mfmerge
