@@ -74,13 +74,13 @@ jobs:
             apt: openscad-nightly
           - name: AppImage nightly
             runner: ubuntu-latest
-            uri: https://files.openscad.org/snapshots/.snapshot_linux_x86_64.js
+            uri: https://files.openscad.org/snapshots/.snapshots.js#LIN64_SNAPSHOT
           - name: MacOS nightly
             runner: macos-latest
-            uri: https://files.openscad.org/snapshots/.snapshot_macos.js
+            uri: https://files.openscad.org/snapshots/.snapshots.js#MAC_SNAPSHOT
           - name: Windows nightly
             runner: windows-latest
-            uri: https://files.openscad.org/snapshots/.snapshot_win64.js
+            uri: https://files.openscad.org/snapshots/.snapshots.js#WIN64_ZIP_SNAPSHOT
 
     runs-on: ${{ matrix.runner }}
     defaults:
@@ -95,10 +95,18 @@ jobs:
         run: echo "ImageVersion=${ImageVersion}" >> $GITHUB_ENV
 
       - name: Resolve nightly URI
-        if: endsWith(env.URI, '.js')
+        if: contains(env.URI, '/.snapshots.js#')
         run: |
-          URI=$(curl --silent "$URI" | awk -F " *[(,)'] *" '/^setSnapshotFileInfo\(/ && !/_INSTALLER/ {print $12}')
-          echo "URI=${URI}" | tee -a "$GITHUB_ENV"
+          # The uri lists all snapshots, the anchor part indicates which one we need
+          URI_RESOLVED=$(
+            export TAG="${URI#*#}"
+            curl --silent "${URI%#*}" | awk -F \
+                " *[(,)'] *" \
+                '($1 == "setSnapshotFileInfo" && $3 == ENVIRON["TAG"]) {print $12}'
+          )
+          echo "Resolved from: '${URI}'"
+          echo "Resolved to: '${URI_RESOLVED}'"
+          echo "URI=${URI_RESOLVED}" | tee -a "$GITHUB_ENV"
 
       - name: Install OpenSCAD (apt)
         if: matrix.apt
