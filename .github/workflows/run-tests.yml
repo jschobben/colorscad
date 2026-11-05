@@ -82,6 +82,17 @@ jobs:
             runner: windows-latest
             uri: https://files.openscad.org/snapshots/.snapshots.js#WIN64_ZIP_SNAPSHOT
 
+          # TODO disable these automatically when OpenSCAD is not in a RC phase
+          - name: AppImage RC
+            runner: ubuntu-latest
+            uri: https://files.openscad.org/rc/.rc.js#LIN64_RC
+          - name: MacOS RC
+            runner: macos-latest
+            uri: https://files.openscad.org/rc/.rc.js#MAC_RC
+          - name: Windows RC
+            runner: windows-latest
+            uri: https://files.openscad.org/rc/.rc.js#WIN64_ZIP_RC
+
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
@@ -94,10 +105,10 @@ jobs:
       - name: Make runner image version accessible
         run: echo "ImageVersion=${ImageVersion}" >> $GITHUB_ENV
 
-      - name: Resolve nightly URI
-        if: contains(env.URI, '/.snapshots.js#')
+      - name: Resolve nightly/RC URI
+        if: contains(env.URI, '.js#')
         run: |
-          # The uri lists all snapshots, the anchor part indicates which one we need
+          # The uri lists all artifacts, the anchor part indicates which one we need
           URI_RESOLVED=$(
             export TAG="${URI#*#}"
             curl --silent "${URI%#*}" | awk -F \
@@ -105,7 +116,6 @@ jobs:
                 '($1 == "setSnapshotFileInfo" && $3 == ENVIRON["TAG"]) {print $12}'
           )
           echo "Resolved from: '${URI}'"
-          echo "Resolved to: '${URI_RESOLVED}'"
           echo "URI=${URI_RESOLVED}" | tee -a "$GITHUB_ENV"
 
       - name: Install OpenSCAD (apt)
