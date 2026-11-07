@@ -39,6 +39,31 @@ for ARG in "$@"; do
 done
 
 
+# Extract OpenSCAD version as 8-digit number: yyyymmdd
+OPENSCAD_VERSION=$(
+	"$OPENSCAD_CMD" --version 2>&1 \
+	| sed -En '
+		/^OpenSCAD [Vv]ersion:? / {
+			s///;
+			# Map "RC" versions onto day 4x, and map releases onto day 5x
+			s/-RC/4/;
+			s/-/5/;
+			# Strip dots
+			s/\.//g;
+			# Zero-pad to 8 digits; "202611" -> "20261100"
+			s/$/00000000/;
+			s/(^.{8}).*$/\1/;
+			p;
+		}
+	'
+)
+echo "OpenSCAD numeric version: ${OPENSCAD_VERSION}" >&2
+if ! [[ "$OPENSCAD_VERSION" =~ ^[0-9]{8}$ ]]; then
+	echo "Version doesn't consist of 8 digits!" >&2
+	exit 1
+fi
+
+
 # Windows version of shasum (at least for '-a 256')
 if ! command -v shasum && command -v certutil; then
 	shasum() {
@@ -91,7 +116,7 @@ function fail_tips {
 			rm intersect.*
 		)
 	fi
-	if ! "$OPENSCAD_CMD" --help 2>&1 | grep -q -- '--input'; then
+	if [ "$OPENSCAD_VERSION" -ge 20240126 ] && ! "$OPENSCAD_CMD" --help 2>&1 | grep -q -- 'predictible-output'; then
 		# On newer builds, 'predictible-output' must be enabled to get the same behavior as older ones
 		echo "For OpenSCAD >= 2024.01.26, only a build with experimental features enabled will work."
 	fi
@@ -187,6 +212,10 @@ function test_render {
 			function openscad_test_override { "$OPENSCAD_CMD_ORG" --enable=predictible-output "$@"; }
 			export -f openscad_test_override
 			export OPENSCAD_CMD=openscad_test_override
+		elif [ "$OPENSCAD_VERSION" -ge 20240126 ]; then
+			echo "OpenSCAD version is recent enough that 'predictible-output' is required, but your build doesn't support it." >&2
+			echo "Tests will fail due to this, so aborting now." >&2
+			exit 1
 		fi
 		# Temporarily disable 'nounset' as workaround for bash 3.2 when EXTRA_ARGS is empty
 		set +o nounset
