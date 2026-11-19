@@ -2,6 +2,7 @@
 # shellcheck disable=SC2030 # OPENSCAD_CMD is modified in a subshell several times
 # shellcheck disable=SC2031 # ... and it's fine those changes are lost outside the subshell
 # shellcheck disable=SC2317 # several defined functions are only called indirectly
+# shellcheck disable=SC2329 # OPENSCAD_CMD is used to invoke some functions indirectly, triggering not-used warnings
 set -o errexit -o errtrace -o nounset
 
 # cd to this script's directory
