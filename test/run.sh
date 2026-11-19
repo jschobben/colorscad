@@ -64,6 +64,12 @@ if ! [[ "$OPENSCAD_VERSION" =~ ^[0-9]{8}$ ]]; then
 fi
 
 
+# Range of OpenSCAD versions (inclusive) which requires explicit enabling of predictable output.
+# Sufficiently new builds always have this enabled, and do not require enabling it anymore.
+declare -r PREDICTABLE_MIN_VERSION=2024.01.26
+declare -r PREDICTABLE_MAX_VERSION=2026.11.17
+
+
 # Windows version of shasum (at least for '-a 256')
 if ! command -v shasum && command -v certutil; then
 	shasum() {
@@ -116,9 +122,10 @@ function fail_tips {
 			rm intersect.*
 		)
 	fi
-	if [ "$OPENSCAD_VERSION" -ge 20240126 ] && ! "$OPENSCAD_CMD" --help 2>&1 | grep -q -- 'predictible-output'; then
-		# On newer builds, 'predictible-output' must be enabled to get the same behavior as older ones
-		echo "For OpenSCAD >= 2024.01.26, only a build with experimental features enabled will work."
+	if [ "$OPENSCAD_VERSION" -ge "${PREDICTABLE_MIN_VERSION//./}" ] && [ "$OPENSCAD_VERSION" -le "${PREDICTABLE_MAX_VERSION//./}" ] \
+			&& ! "$OPENSCAD_CMD" --help 2>&1 | grep -q -- 'predictible-output'; then
+		# On some build versions, 'predictible-output' must be enabled to have consistent (testable) output.
+		echo "For OpenSCAD ${PREDICTABLE_MIN_VERSION} .. ${PREDICTABLE_MAX_VERSION}, only a build with experimental features enabled will work."
 	fi
 }
 trap 'echo "Failure at $0:$LINENO" >&2; fail_tips >&2' ERR
@@ -205,15 +212,15 @@ function test_render {
 	# Generate output
 	local OUTPUT="${TEMPDIR}/output.${FORMAT}"
 	rm -f "$OUTPUT"
-	# OpenSCAD >= 2024.01.26 with lib3mf v2 requires enabling "predictible-output" to get the same behavior as older versions
+	# OpenSCAD PREDICTABLE_MIN_VERSION .. PREDICTABLE_MAX_VERSION with lib3mf v2 requires enabling "predictible-output" to get the same behavior as other versions
 	(
 		if "$OPENSCAD_CMD" --help 2>&1 | grep -q predictible-output; then
 			export OPENSCAD_CMD_ORG=${OPENSCAD_CMD}
 			function openscad_test_override { "$OPENSCAD_CMD_ORG" --enable=predictible-output "$@"; }
 			export -f openscad_test_override
 			export OPENSCAD_CMD=openscad_test_override
-		elif [ "$OPENSCAD_VERSION" -ge 20240126 ]; then
-			echo "OpenSCAD version is recent enough that 'predictible-output' is required, but your build doesn't support it." >&2
+		elif [ "$OPENSCAD_VERSION" -ge "${PREDICTABLE_MIN_VERSION//./}" ] && [ "$OPENSCAD_VERSION" -le "${PREDICTABLE_MAX_VERSION//./}" ]; then
+			echo "Your OpenSCAD version requires that 'predictible-output' is enabled, but your build doesn't support it." >&2
 			echo "Tests will fail due to this, so aborting now." >&2
 			exit 1
 		fi
