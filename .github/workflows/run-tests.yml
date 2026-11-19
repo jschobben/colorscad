@@ -67,10 +67,15 @@ jobs:
             test-params: test_amf
             # As of 17 may 2025, this build appears to be stale
             skip-age-check: true
+          - name: Ubuntu nightly on 24.04
+            runner: ubuntu-24.04
+            apt-key: https://files.openscad.org/OBS-Repository-Key.pub
+            apt-repo: https://download.opensuse.org/repositories/home:/t-paul/xUbuntu_24.04/
+            apt: openscad-nightly
           - name: Ubuntu nightly on latest
             runner: ubuntu-latest
             apt-key: https://files.openscad.org/OBS-Repository-Key.pub
-            apt-repo: https://download.opensuse.org/repositories/home:/t-paul/xUbuntu_24.04/
+            apt-repo: https://download.opensuse.org/repositories/home:/t-paul/xUbuntu_26.04/
             apt: openscad-nightly
           - name: AppImage nightly
             runner: ubuntu-latest
@@ -127,7 +132,8 @@ jobs:
       - name: Install OpenSCAD (AppImage)
         if: endsWith(env.URI, '.AppImage')
         run: |
-          CMD='apt install fuse libopengl0 libegl1'
+          # AppImages still require libfuse.so.2, so install it explicitly
+          CMD='apt install fuse libopengl0 libegl1 libfuse2t64'
           sudo ${CMD} || {
             echo "'apt install' failed, running 'apt update' and retry..."
             sudo apt update
@@ -254,6 +260,10 @@ jobs:
             echo "::error::Found some files with unexpected executable permission"
             exit 1
           fi
+
+      - name: shellcheck info
+        run: |
+          shellcheck --version
 
       - name: shellcheck colorscad.sh
         run: |
