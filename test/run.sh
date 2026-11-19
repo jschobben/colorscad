@@ -68,7 +68,7 @@ fi
 # Range of OpenSCAD versions (inclusive) which requires explicit enabling of predictable output.
 # Sufficiently new builds always have this enabled, and do not require enabling it anymore.
 declare -r PREDICTABLE_MIN_VERSION=2024.01.26
-declare -r PREDICTABLE_MAX_VERSION=2026.11.17
+declare -r PREDICTABLE_MAX_VERSION=2026.11.16
 
 
 # Windows version of shasum (at least for '-a 256')
