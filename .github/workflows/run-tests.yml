@@ -261,6 +261,10 @@ jobs:
             exit 1
           fi
 
+      - name: shellcheck info
+        run: |
+          shellcheck --version
+
       - name: shellcheck colorscad.sh
         run: |
           shellcheck colorscad.sh
