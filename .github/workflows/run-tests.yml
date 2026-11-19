@@ -127,7 +127,8 @@ jobs:
       - name: Install OpenSCAD (AppImage)
         if: endsWith(env.URI, '.AppImage')
         run: |
-          CMD='apt install fuse libopengl0 libegl1'
+          # AppImages still require libfuse.so.2, so install it explicitly
+          CMD='apt install fuse libopengl0 libegl1 libfuse2t64'
           sudo ${CMD} || {
             echo "'apt install' failed, running 'apt update' and retry..."
             sudo apt update
